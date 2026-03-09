@@ -28,12 +28,12 @@ describe("app", () => {
     render(<App />);
 
     await waitFor(() => {
-      expect(screen.getByText(/keep license inventory readable/i)).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: /inventory overview/i })).toBeInTheDocument();
     });
 
-    expect(screen.getByRole("heading", { name: /catalog builder/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /inventory control/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /reservation desk/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /refresh board/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Catalog" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Inventory" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Reservations" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /refresh/i })).toBeInTheDocument();
   });
 });
