@@ -32,7 +32,7 @@ describe("app", () => {
       expect(screen.getByRole("heading", { name: /inventory overview/i })).toBeInTheDocument();
     });
 
-    expect(screen.getByRole("button", { name: /open catalog setup/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /open catalog setup/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /refresh data/i })).toBeInTheDocument();
   });
 });
