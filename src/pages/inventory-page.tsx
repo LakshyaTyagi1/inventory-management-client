@@ -4,6 +4,7 @@ import { ArrowDownIcon, ArrowUpIcon, BoxesIcon, PencilRulerIcon } from "lucide-r
 import type { DashboardSnapshot, Sku } from "@/types";
 import { api } from "@/lib/api";
 import type { ActionRunner } from "@/components/operations-app";
+import { FixedChoiceField } from "@/components/fixed-choice-field";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -78,20 +79,24 @@ export function InventoryPage({
                 <FieldGroup>
                   <Field>
                     <FieldLabel>Sku</FieldLabel>
-                    <Select value={inventorySkuId} onValueChange={setInventorySkuId}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a sku" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectGroup>
-                          {snapshot.skus.map((sku) => (
-                            <SelectItem key={sku.id} value={sku.id}>
-                              {formatSkuLabel(sku)}
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
+                    {snapshot.skus.length === 1 ? (
+                      <FixedChoiceField value={formatSkuLabel(snapshot.skus[0]!)} hint="Only sku available right now" />
+                    ) : (
+                      <Select value={inventorySkuId} onValueChange={setInventorySkuId}>
+                        <SelectTrigger aria-label="Select sku">
+                          <SelectValue placeholder="Select a sku" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            {snapshot.skus.map((sku) => (
+                              <SelectItem key={sku.id} value={sku.id}>
+                                {formatSkuLabel(sku)}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                    )}
                   </Field>
                   <Field>
                     <FieldLabel>Total quantity</FieldLabel>

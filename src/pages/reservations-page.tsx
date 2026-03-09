@@ -4,6 +4,7 @@ import { CircleCheckIcon, Clock3Icon, OctagonXIcon } from "lucide-react";
 import type { DashboardSnapshot, Reservation, Sku } from "@/types";
 import { api } from "@/lib/api";
 import type { ActionRunner } from "@/components/operations-app";
+import { FixedChoiceField } from "@/components/fixed-choice-field";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -76,20 +77,24 @@ export function ReservationsPage({
               <FieldGroup className="lg:grid lg:grid-cols-2">
                 <Field className="lg:col-span-2">
                   <FieldLabel>Sku</FieldLabel>
-                  <Select value={reservationSkuId} onValueChange={setReservationSkuId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a sku" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        {snapshot.skus.map((sku) => (
-                          <SelectItem key={sku.id} value={sku.id}>
-                            {formatSkuLabel(sku)}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
+                  {snapshot.skus.length === 1 ? (
+                    <FixedChoiceField value={formatSkuLabel(snapshot.skus[0]!)} hint="Only sku available right now" />
+                  ) : (
+                    <Select value={reservationSkuId} onValueChange={setReservationSkuId}>
+                      <SelectTrigger aria-label="Select sku">
+                        <SelectValue placeholder="Select a sku" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          {snapshot.skus.map((sku) => (
+                            <SelectItem key={sku.id} value={sku.id}>
+                              {formatSkuLabel(sku)}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  )}
                 </Field>
                 <Field>
                   <FieldLabel>Quantity</FieldLabel>

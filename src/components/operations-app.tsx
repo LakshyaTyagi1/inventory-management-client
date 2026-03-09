@@ -169,32 +169,40 @@ export function OperationsApp() {
 
   return (
     <SidebarProvider>
-      <Sidebar collapsible="icon" variant="inset" className="border-r shadow-none">
-        <SidebarHeader className="gap-3 border-b">
-          <div className="flex items-center gap-3 px-2">
+      <Sidebar collapsible="icon" variant="sidebar" className="border-r shadow-none">
+        <SidebarHeader className="gap-3 border-b px-4 py-5">
+          <div className="flex items-center gap-3">
             <div className="flex size-9 items-center justify-center rounded-lg border bg-background">
               <BoxesIcon />
             </div>
             <div className="min-w-0">
-              <p className="truncate text-sm font-medium">Inventory</p>
-              <p className="truncate text-xs text-muted-foreground">Operations workspace</p>
+              <p className="truncate text-2xl font-semibold tracking-tight">Inventory</p>
+              <p className="truncate text-sm text-muted-foreground">Operations workspace</p>
             </div>
           </div>
         </SidebarHeader>
 
         <SidebarContent>
-          <SidebarGroup>
-            <SidebarGroupLabel>Workspace</SidebarGroupLabel>
+          <SidebarGroup className="px-4 py-5">
+            <SidebarGroupLabel className="px-0 text-sm font-medium text-sidebar-foreground/80">
+              Workspace
+            </SidebarGroupLabel>
             <SidebarGroupContent>
-              <SidebarMenu>
+              <SidebarMenu className="gap-1.5">
                 {navigationItems.map((item) => (
                   <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton asChild isActive={location.pathname === item.href} tooltip={item.label}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={location.pathname === item.href}
+                      tooltip={item.label}
+                      size="lg"
+                      className="h-auto min-h-14 items-start rounded-xl px-3 py-3"
+                    >
                       <NavLink to={item.href}>
-                        <item.icon />
-                        <div className="flex min-w-0 flex-col">
-                          <span>{item.label}</span>
-                          <span className="truncate text-[11px] text-muted-foreground">{item.subtitle}</span>
+                        <item.icon className="mt-0.5 size-4.5" />
+                        <div className="flex min-w-0 flex-1 flex-col">
+                          <span className="text-base font-medium leading-none">{item.label}</span>
+                          <span className="truncate pt-1 text-sm text-muted-foreground">{item.subtitle}</span>
                         </div>
                       </NavLink>
                     </SidebarMenuButton>
@@ -205,8 +213,8 @@ export function OperationsApp() {
           </SidebarGroup>
         </SidebarContent>
 
-        <SidebarFooter className="border-t">
-          <Card size="sm" className="m-2 shadow-none">
+        <SidebarFooter className="border-t px-4 py-5">
+          <Card size="sm" className="shadow-none">
             <CardHeader className="border-b">
               <CardTitle className="text-sm">Status</CardTitle>
               <CardDescription>{loading ? "Syncing data" : status.text}</CardDescription>
@@ -248,7 +256,7 @@ export function OperationsApp() {
           </div>
         </header>
 
-        <main className="flex flex-1 flex-col gap-6 p-4 md:p-6">
+        <main className="flex flex-1 flex-col gap-6 px-4 py-6 md:px-6">
           <Card className="shadow-none">
             <CardHeader>
               <CardTitle>{currentMeta.title}</CardTitle>

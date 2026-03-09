@@ -3,6 +3,7 @@ import { BoxesIcon, Building2Icon, Layers3Icon, PackageIcon } from "lucide-react
 
 import type { DashboardSnapshot, Sku } from "@/types";
 import { Button } from "@/components/ui/button";
+import { FixedChoiceField } from "@/components/fixed-choice-field";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -110,20 +111,24 @@ export function CatalogPage({
             <FieldGroup>
               <Field>
                 <FieldLabel>Vendor</FieldLabel>
-                <Select value={productVendorId} onValueChange={setProductVendorId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a vendor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {snapshot.vendors.map((vendor) => (
-                        <SelectItem key={vendor.id} value={vendor.id}>
-                          {vendor.name}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
+                {snapshot.vendors.length === 1 ? (
+                  <FixedChoiceField value={snapshot.vendors[0]!.name} hint="Only vendor available right now" />
+                ) : (
+                  <Select value={productVendorId} onValueChange={setProductVendorId}>
+                    <SelectTrigger aria-label="Select vendor">
+                      <SelectValue placeholder="Select a vendor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        {snapshot.vendors.map((vendor) => (
+                          <SelectItem key={vendor.id} value={vendor.id}>
+                            {vendor.name}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                )}
               </Field>
               <Field>
                 <FieldLabel>Product name</FieldLabel>
@@ -172,20 +177,24 @@ export function CatalogPage({
             <FieldGroup>
               <Field>
                 <FieldLabel>Product</FieldLabel>
-                <Select value={planProductId} onValueChange={setPlanProductId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a product" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {snapshot.products.map((product) => (
-                        <SelectItem key={product.id} value={product.id}>
-                          {product.name}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
+                {snapshot.products.length === 1 ? (
+                  <FixedChoiceField value={snapshot.products[0]!.name} hint="Only product available right now" />
+                ) : (
+                  <Select value={planProductId} onValueChange={setPlanProductId}>
+                    <SelectTrigger aria-label="Select product">
+                      <SelectValue placeholder="Select a product" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        {snapshot.products.map((product) => (
+                          <SelectItem key={product.id} value={product.id}>
+                            {product.name}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                )}
               </Field>
               <Field>
                 <FieldLabel>Plan name</FieldLabel>
@@ -247,20 +256,24 @@ export function CatalogPage({
             <FieldGroup>
               <Field>
                 <FieldLabel>Plan</FieldLabel>
-                <Select value={skuPlanId} onValueChange={setSkuPlanId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a plan" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {snapshot.plans.map((plan) => (
-                        <SelectItem key={plan.id} value={plan.id}>
-                          {plan.name}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
+                {snapshot.plans.length === 1 ? (
+                  <FixedChoiceField value={snapshot.plans[0]!.name} hint="Only plan available right now" />
+                ) : (
+                  <Select value={skuPlanId} onValueChange={setSkuPlanId}>
+                    <SelectTrigger aria-label="Select plan">
+                      <SelectValue placeholder="Select a plan" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        {snapshot.plans.map((plan) => (
+                          <SelectItem key={plan.id} value={plan.id}>
+                            {plan.name}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                )}
               </Field>
               <Field>
                 <FieldLabel>Sku code</FieldLabel>
