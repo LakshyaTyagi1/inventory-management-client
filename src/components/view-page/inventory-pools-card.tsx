@@ -1,9 +1,11 @@
+import { Link } from "react-router-dom";
 import { BoxesIcon, PencilRulerIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -29,18 +31,27 @@ import type { InventoryRowEntry } from "./types";
 
 export function InventoryPoolsCard({
   rows,
+  description,
+  viewAllHref,
   onEditInventory,
 }: {
   rows: InventoryRowEntry[];
+  description: string;
+  viewAllHref?: string;
   onEditInventory: (input: { skuId: string; poolId?: string }) => void;
 }) {
   return (
     <Card className="shadow-none">
       <CardHeader>
         <CardTitle>Inventory pools</CardTitle>
-        <CardDescription>
-          {rows.length} matching pool{rows.length === 1 ? "" : "s"}.
-        </CardDescription>
+        <CardDescription>{description}</CardDescription>
+        {viewAllHref ? (
+          <CardAction>
+            <Button asChild variant="outline" size="sm">
+              <Link to={viewAllHref}>View all</Link>
+            </Button>
+          </CardAction>
+        ) : null}
       </CardHeader>
       <CardContent>
         {rows.length === 0 ? (

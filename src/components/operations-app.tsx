@@ -59,8 +59,11 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { SetupPage } from "@/pages/setup-page";
+import { BillingOptionsPage } from "@/pages/billing-options-page";
+import { InventoryPoolsPage } from "@/pages/inventory-pools-page";
 import { ViewPage } from "@/pages/view-page";
 import { AuditPage } from "@/pages/audit-page";
+import { ViewWorkspace } from "@/components/view-page/view-workspace";
 
 const emptySnapshot: DashboardSnapshot = {
   products: [],
@@ -129,6 +132,18 @@ const routeMeta: Record<string, RouteMeta> = {
     description:
       "Browse the billing options, inventory pools, and recent activity already in the system.",
   },
+  "/view/billing-options": {
+    label: "view",
+    title: "All billing options",
+    description:
+      "Search and inspect every billing option that has already been created.",
+  },
+  "/view/inventory-pools": {
+    label: "view",
+    title: "All inventory pools",
+    description:
+      "Search and inspect every tracked inventory pool across regions.",
+  },
   "/inventory": {
     label: "view",
     title: "View created items",
@@ -157,6 +172,11 @@ function getRouteMeta(pathname: string): RouteMeta {
         "Create billing options and starting stock in one guided operator flow.",
     }
   );
+}
+
+function isNavigationItemActive(pathname: string, href: string) {
+  if (href === "/") return pathname === href;
+  return pathname === href || pathname.startsWith(`${href}/`);
 }
 
 export function OperationsApp() {
@@ -255,7 +275,10 @@ export function OperationsApp() {
                   <SidebarMenuItem key={item.href}>
                     <SidebarMenuButton
                       asChild
-                      isActive={location.pathname === item.href}
+                      isActive={isNavigationItemActive(
+                        location.pathname,
+                        item.href,
+                      )}
                       tooltip={item.label}
                       size="lg"
                       className="h-auto min-h-14 items-start rounded-xl px-3 py-3"
@@ -359,14 +382,18 @@ export function OperationsApp() {
             <Route
               path="/view"
               element={
-                <ViewPage
+                <ViewWorkspace
                   snapshot={snapshot}
                   loading={loading}
                   activeReservations={activeReservations}
                   runAction={runAction}
                 />
               }
-            />
+            >
+              <Route index element={<ViewPage />} />
+              <Route path="billing-options" element={<BillingOptionsPage />} />
+              <Route path="inventory-pools" element={<InventoryPoolsPage />} />
+            </Route>
             <Route path="/create" element={<Navigate to="/" replace />} />
             <Route path="/catalog" element={<Navigate to="/" replace />} />
             <Route
