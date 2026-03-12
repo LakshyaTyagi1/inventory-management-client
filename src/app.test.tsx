@@ -49,6 +49,6 @@ describe("app", () => {
       ).toBeInTheDocument();
     });
 
-    expect(screen.getByText(/view everything created/i)).toBeInTheDocument();
+    expect(screen.getByText(/watch list/i)).toBeInTheDocument();
   });
 });
