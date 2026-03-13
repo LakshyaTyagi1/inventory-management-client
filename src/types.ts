@@ -1,4 +1,5 @@
-export type Region = "MENA" | "GLOBAL" | "US" | "EU" | "INDIA" | "APAC";
+export type Region = "GCC" | "INDIA";
+export type BillingCycle = "monthly" | "yearly" | "one_time";
 
 export type Product = {
   _id: string;
@@ -19,27 +20,35 @@ export type Plan = {
 };
 
 export type PricePerUnit = {
+  billingCycle: BillingCycle;
   amount: string;
   currency: string;
   entity?: string;
   ratePeriod?: string;
 };
 
+export type PurchaseConstraints = {
+  raw: string;
+  minUnits?: number;
+  maxUnits?: number;
+  increment?: number;
+};
+
 export type Sku = {
   _id: string;
   planId: string;
   code: string;
-  billingPeriod: "monthly" | "yearly";
-  region?: Region;
+  region: Region;
   seatType: "seat" | "license_key";
-  pricePerUnit?: PricePerUnit;
+  pricingOptions: PricePerUnit[];
+  purchaseConstraints?: PurchaseConstraints;
+  activationTimeline?: string;
   createdAt: string;
 };
 
 export type InventoryPool = {
   _id: string;
   skuId: string;
-  region: Region;
   totalQuantity: number;
   updatedAt: string;
 };

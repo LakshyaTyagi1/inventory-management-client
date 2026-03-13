@@ -12,8 +12,10 @@ import {
   buildSkuCode,
   createEmptyPricePerUnit,
   ensureUniqueSkuCode,
-  normalizePricePerUnit,
+  nextPricingCycle,
+  normalizePricingOptions,
   normalizeRegion,
+  parsePurchaseConstraints,
 } from "@/lib/billing-option";
 import { buildInventoryRows, buildViewSetupEntries } from "@/lib/view-data";
 import { api } from "@/lib/api";
@@ -45,12 +47,12 @@ export function ViewWorkspace({
   const [billingDialogSkuId, setBillingDialogSkuId] = useState<string | null>(
     null,
   );
-  const [billingPeriod, setBillingPeriod] =
-    useState<Sku["billingPeriod"]>("monthly");
   const [billingRegion, setBillingRegion] = useState("");
-  const [billingPricePerUnit, setBillingPricePerUnit] = useState<PricePerUnit>(
-    createEmptyPricePerUnit(),
-  );
+  const [billingPricingOptions, setBillingPricingOptions] = useState<
+    PricePerUnit[]
+  >([createEmptyPricePerUnit()]);
+  const [purchaseConstraintsRaw, setPurchaseConstraintsRaw] = useState("");
+  const [activationTimeline, setActivationTimeline] = useState("");
   const [inventoryDialogTarget, setInventoryDialogTarget] =
     useState<InventoryDialogTarget | null>(null);
   const [inventoryQuantity, setInventoryQuantity] = useState(0);
@@ -97,11 +99,16 @@ export function ViewWorkspace({
   useEffect(() => {
     if (!activeBillingEntry) return;
 
-    setBillingPeriod(activeBillingEntry.sku.billingPeriod);
-    setBillingRegion(activeBillingEntry.sku.region ?? "");
-    setBillingPricePerUnit(
-      activeBillingEntry.sku.pricePerUnit ?? createEmptyPricePerUnit(),
+    setBillingRegion(activeBillingEntry.sku.region);
+    setBillingPricingOptions(
+      activeBillingEntry.sku.pricingOptions.length > 0
+        ? activeBillingEntry.sku.pricingOptions
+        : [createEmptyPricePerUnit()],
     );
+    setPurchaseConstraintsRaw(
+      activeBillingEntry.sku.purchaseConstraints?.raw ?? "",
+    );
+    setActivationTimeline(activeBillingEntry.sku.activationTimeline ?? "");
   }, [activeBillingEntry]);
 
   useEffect(() => {
@@ -119,7 +126,6 @@ export function ViewWorkspace({
       buildSkuCode({
         productName: activeBillingEntry.product.name,
         planName: activeBillingEntry.plan.name,
-        billingPeriod,
         region: normalizedBillingRegion,
       }),
       new Set(
@@ -128,56 +134,74 @@ export function ViewWorkspace({
           .map((sku) => sku.code),
       ),
     );
-  }, [
-    activeBillingEntry,
-    billingPeriod,
-    normalizedBillingRegion,
-    snapshot.skus,
-  ]);
+  }, [activeBillingEntry, normalizedBillingRegion, snapshot.skus]);
 
-  const normalizedBillingPricePerUnit = useMemo(
-    () => normalizePricePerUnit(billingPricePerUnit),
-    [billingPricePerUnit],
+  const normalizedBillingPricingOptions = useMemo(
+    () => normalizePricingOptions(billingPricingOptions),
+    [billingPricingOptions],
   );
 
   const billingHasPricing =
-    normalizedBillingPricePerUnit.amount.length > 0 &&
-    normalizedBillingPricePerUnit.currency.length > 0;
-  const currentBillingPrice = useMemo(
-    () =>
-      normalizePricePerUnit(
-        activeBillingEntry?.sku.pricePerUnit ?? createEmptyPricePerUnit(),
+    Boolean(normalizedBillingRegion) &&
+    normalizedBillingPricingOptions.length > 0 &&
+    normalizedBillingPricingOptions.every(
+      (pricingOption) =>
+        pricingOption.amount.length > 0 && pricingOption.currency.length > 0,
+    ) &&
+    new Set(
+      normalizedBillingPricingOptions.map(
+        (pricingOption) => pricingOption.billingCycle,
       ),
+    ).size === normalizedBillingPricingOptions.length;
+  const currentBillingPricingOptions = useMemo(
+    () => normalizePricingOptions(activeBillingEntry?.sku.pricingOptions ?? []),
     [activeBillingEntry],
   );
   const billingChanged =
     !!activeBillingEntry &&
-    (activeBillingEntry.sku.billingPeriod !== billingPeriod ||
-      (activeBillingEntry.sku.region ?? undefined) !==
-        normalizedBillingRegion ||
+    (activeBillingEntry.sku.region !== normalizedBillingRegion ||
       activeBillingEntry.sku.code !== generatedBillingCode ||
-      currentBillingPrice.amount !== normalizedBillingPricePerUnit.amount ||
-      currentBillingPrice.currency !== normalizedBillingPricePerUnit.currency ||
-      (currentBillingPrice.entity ?? undefined) !==
-        (normalizedBillingPricePerUnit.entity ?? undefined) ||
-      (currentBillingPrice.ratePeriod ?? undefined) !==
-        (normalizedBillingPricePerUnit.ratePeriod ?? undefined));
+      JSON.stringify(currentBillingPricingOptions) !==
+        JSON.stringify(normalizedBillingPricingOptions) ||
+      (activeBillingEntry.sku.purchaseConstraints?.raw ?? "") !==
+        purchaseConstraintsRaw.trim() ||
+      (activeBillingEntry.sku.activationTimeline ?? "") !==
+        activationTimeline.trim());
 
-  const activeInventoryRegion =
-    activeInventoryPool?.region ?? activeInventoryEntry?.sku.region ?? "GLOBAL";
+  const activeInventoryRegion = activeInventoryEntry?.sku.region ?? "";
   const inventoryChanged =
     activeInventoryPool?.totalQuantity !== undefined
       ? inventoryQuantity !== activeInventoryPool.totalQuantity
       : inventoryQuantity > 0;
 
-  const updateBillingPricePerUnit = (
+  const updateBillingPricingOption = (
+    index: number,
     field: keyof PricePerUnit,
     value: string,
   ) => {
-    setBillingPricePerUnit((current) => ({
+    setBillingPricingOptions((current) =>
+      current.map((pricingOption, currentIndex) =>
+        currentIndex === index
+          ? {
+              ...pricingOption,
+              [field]: value,
+            }
+          : pricingOption,
+      ),
+    );
+  };
+
+  const addBillingPricingOption = () => {
+    setBillingPricingOptions((current) => [
       ...current,
-      [field]: value,
-    }));
+      createEmptyPricePerUnit(nextPricingCycle(current)),
+    ]);
+  };
+
+  const removeBillingPricingOption = (index: number) => {
+    setBillingPricingOptions((current) =>
+      current.filter((_, currentIndex) => currentIndex !== index),
+    );
   };
 
   const closeBillingDialog = () => setBillingDialogSkuId(null);
@@ -202,28 +226,35 @@ export function ViewWorkspace({
         onOpenChange={(open) => {
           if (!open) closeBillingDialog();
         }}
-        billingPeriod={billingPeriod}
-        onBillingPeriodChange={setBillingPeriod}
         region={billingRegion}
         onRegionChange={setBillingRegion}
         generatedCode={generatedBillingCode}
-        pricePerUnit={billingPricePerUnit}
-        onPricePerUnitChange={updateBillingPricePerUnit}
+        pricingOptions={billingPricingOptions}
+        onPricingOptionChange={updateBillingPricingOption}
+        onAddPricingOption={addBillingPricingOption}
+        onRemovePricingOption={removeBillingPricingOption}
+        purchaseConstraints={purchaseConstraintsRaw}
+        onPurchaseConstraintsChange={setPurchaseConstraintsRaw}
+        activationTimeline={activationTimeline}
+        onActivationTimelineChange={setActivationTimeline}
         canSave={billingHasPricing && billingChanged}
         loading={loading}
         onSave={() => {
-          if (!activeBillingEntry) return;
+          if (!activeBillingEntry || !normalizedBillingRegion) return;
 
           void runAction(
             () =>
               api.updateSku(activeBillingEntry.sku._id, {
                 code: generatedBillingCode,
-                billingPeriod,
                 region: normalizedBillingRegion,
                 seatType: activeBillingEntry.sku.seatType,
-                pricePerUnit: normalizedBillingPricePerUnit,
+                pricingOptions: normalizedBillingPricingOptions,
+                purchaseConstraints: parsePurchaseConstraints(
+                  purchaseConstraintsRaw,
+                ),
+                activationTimeline: activationTimeline.trim() || undefined,
               }),
-            "Billing option updated.",
+            "Regional offer updated.",
           ).then((ok) => {
             if (ok) closeBillingDialog();
           });
@@ -251,7 +282,6 @@ export function ViewWorkspace({
             ? () =>
                 api.adjustInventory({
                   skuId: activeInventoryEntry.sku._id,
-                  region: activeInventoryRegion,
                   change: inventoryQuantity - activeInventoryPool.totalQuantity,
                   reason:
                     inventoryQuantity >= activeInventoryPool.totalQuantity
@@ -262,7 +292,6 @@ export function ViewWorkspace({
             : () =>
                 api.createInventoryPool({
                   skuId: activeInventoryEntry.sku._id,
-                  region: activeInventoryRegion,
                   totalQuantity: inventoryQuantity,
                 });
 

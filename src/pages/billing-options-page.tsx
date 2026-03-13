@@ -28,7 +28,7 @@ export function BillingOptionsPage() {
           { name: "product.vendor", weight: 0.2 },
           { name: "plan.name", weight: 0.2 },
           { name: "sku.code", weight: 0.15 },
-          { name: "sku.billingPeriod", weight: 0.05 },
+          { name: "sku.pricingOptions.billingCycle", weight: 0.05 },
           { name: "sku.region", weight: 0.05 },
         ],
       }),
@@ -46,13 +46,13 @@ export function BillingOptionsPage() {
     <>
       <ViewSearchCard
         title="Browse billing options"
-        description="Search every billing option by product, vendor, plan, billing code, cadence, or region."
-        placeholder="Search by product, vendor, plan, code, cadence, or region"
+        description="Search every regional offer by product, vendor, plan, offer code, billing cycle, or region."
+        placeholder="Search by product, vendor, plan, code, cycle, or region"
         query={query}
         onQueryChange={setQuery}
         resultCount={filteredEntries.length}
         totalCount={setupEntries.length}
-        noun="billing option"
+        noun="regional offer"
       />
 
       {filteredEntries.length === 0 ? (

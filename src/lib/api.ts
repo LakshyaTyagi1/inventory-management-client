@@ -2,6 +2,7 @@ import type {
   DashboardSnapshot,
   Plan,
   PricePerUnit,
+  PurchaseConstraints,
   Product,
   Sku,
   SkuCatalogEntry,
@@ -115,10 +116,11 @@ export const api = {
     plan: { name: string; planType: "standard" | "enterprise" };
     sku: {
       code: string;
-      billingPeriod: "monthly" | "yearly";
-      region?: "MENA" | "GLOBAL" | "US" | "EU" | "INDIA" | "APAC";
+      region: "GCC" | "INDIA";
       seatType: "seat" | "license_key";
-      pricePerUnit: PricePerUnit;
+      pricingOptions: PricePerUnit[];
+      purchaseConstraints?: PurchaseConstraints;
+      activationTimeline?: string;
     };
   }) =>
     request<CatalogEntryResponse>("/api/catalog/entries", {
@@ -137,10 +139,11 @@ export const api = {
   createSku: (payload: {
     planId: string;
     code: string;
-    billingPeriod: "monthly" | "yearly";
-    region?: "MENA" | "GLOBAL" | "US" | "EU" | "INDIA" | "APAC";
+    region: "GCC" | "INDIA";
     seatType: "seat" | "license_key";
-    pricePerUnit: PricePerUnit;
+    pricingOptions: PricePerUnit[];
+    purchaseConstraints?: PurchaseConstraints;
+    activationTimeline?: string;
   }) =>
     request<Sku>("/api/skus", {
       method: "POST",
@@ -150,28 +153,24 @@ export const api = {
     skuId: string,
     payload: {
       code: string;
-      billingPeriod: "monthly" | "yearly";
-      region?: "MENA" | "GLOBAL" | "US" | "EU" | "INDIA" | "APAC";
+      region: "GCC" | "INDIA";
       seatType: "seat" | "license_key";
-      pricePerUnit: PricePerUnit;
+      pricingOptions: PricePerUnit[];
+      purchaseConstraints?: PurchaseConstraints;
+      activationTimeline?: string;
     },
   ) =>
     request<Sku>(`/api/skus/${skuId}`, {
       method: "PATCH",
       body: JSON.stringify(payload),
     }),
-  createInventoryPool: (payload: {
-    skuId: string;
-    region: string;
-    totalQuantity: number;
-  }) =>
+  createInventoryPool: (payload: { skuId: string; totalQuantity: number }) =>
     request("/api/inventory-pools", {
       method: "POST",
       body: JSON.stringify(payload),
     }),
   adjustInventory: (payload: {
     skuId: string;
-    region: string;
     change: number;
     reason:
       | "MANUAL_ADD"

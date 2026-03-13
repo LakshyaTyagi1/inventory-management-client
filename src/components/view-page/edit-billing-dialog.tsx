@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { PricePerUnit, Sku } from "@/types";
+import type { PricePerUnit } from "@/types";
 
 import type { ViewSetupEntry } from "./types";
 
@@ -18,13 +18,17 @@ export function EditBillingDialog({
   entry,
   open,
   onOpenChange,
-  billingPeriod,
-  onBillingPeriodChange,
   region,
   onRegionChange,
   generatedCode,
-  pricePerUnit,
-  onPricePerUnitChange,
+  pricingOptions,
+  onPricingOptionChange,
+  onAddPricingOption,
+  onRemovePricingOption,
+  purchaseConstraints,
+  onPurchaseConstraintsChange,
+  activationTimeline,
+  onActivationTimelineChange,
   canSave,
   loading,
   onSave,
@@ -32,13 +36,21 @@ export function EditBillingDialog({
   entry: ViewSetupEntry | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  billingPeriod: Sku["billingPeriod"];
-  onBillingPeriodChange: (value: Sku["billingPeriod"]) => void;
   region: string;
   onRegionChange: (value: string) => void;
   generatedCode: string;
-  pricePerUnit: PricePerUnit;
-  onPricePerUnitChange: (field: keyof PricePerUnit, value: string) => void;
+  pricingOptions: PricePerUnit[];
+  onPricingOptionChange: (
+    index: number,
+    field: keyof PricePerUnit,
+    value: string,
+  ) => void;
+  onAddPricingOption: () => void;
+  onRemovePricingOption: (index: number) => void;
+  purchaseConstraints: string;
+  onPurchaseConstraintsChange: (value: string) => void;
+  activationTimeline: string;
+  onActivationTimelineChange: (value: string) => void;
   canSave: boolean;
   loading: boolean;
   onSave: () => void;
@@ -58,26 +70,27 @@ export function EditBillingDialog({
 
           <BillingDetailsFields
             instanceKey={entry.sku._id}
-            billingPeriod={billingPeriod}
-            onBillingPeriodChange={(value) =>
-              onBillingPeriodChange(value as Sku["billingPeriod"])
-            }
-            billingPeriodDescription="This is the main purchase cadence for the billing option."
             region={region}
             onRegionChange={onRegionChange}
             regionDescription={
               entry.hasLockedRegion
-                ? "Region is locked after stock exists for this billing option."
-                : "Leave this blank when the offer is not region-specific."
+                ? "Region is locked after stock exists for this offer."
+                : "Each offer is regional. Choose GCC or INDIA."
             }
             regionDisabled={entry.hasLockedRegion}
             catalogCode={generatedCode}
-            catalogCodeDescription="The code updates automatically from the product, plan, billing period, and region."
-            pricePerUnit={pricePerUnit}
-            onPricePerUnitChange={onPricePerUnitChange}
+            catalogCodeDescription="The code updates automatically from the product, plan, and region."
+            pricingOptions={pricingOptions}
+            onPricingOptionChange={onPricingOptionChange}
+            onAddPricingOption={onAddPricingOption}
+            onRemovePricingOption={onRemovePricingOption}
+            purchaseConstraints={purchaseConstraints}
+            onPurchaseConstraintsChange={onPurchaseConstraintsChange}
+            activationTimeline={activationTimeline}
+            onActivationTimelineChange={onActivationTimelineChange}
             disabled={loading}
-            amountDescription="Keep this in sync with the vendor quote operators should use."
-            ratePeriodDescription="Only fill this in when the vendor quote uses a different cadence from the billing period above."
+            amountDescription="Keep each billing cycle aligned with the operator-facing MSRP."
+            ratePeriodDescription="Only fill this in when the commercial quote uses a different cadence label."
           />
 
           <DialogFooter showCloseButton>

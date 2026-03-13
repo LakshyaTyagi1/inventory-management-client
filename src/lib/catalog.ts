@@ -1,4 +1,10 @@
-import type { DashboardSnapshot, Plan, Product, Sku } from "@/types";
+import type {
+  DashboardSnapshot,
+  Plan,
+  PricePerUnit,
+  Product,
+  Sku,
+} from "@/types";
 
 type CatalogSnapshot = Pick<DashboardSnapshot, "products" | "plans" | "skus">;
 
@@ -31,10 +37,22 @@ export function buildSkuCatalogLookup(snapshot: CatalogSnapshot) {
   );
 }
 
-export function formatSkuLabel(
-  sku: Pick<Sku, "code" | "region" | "billingPeriod">,
+export function formatSkuLabel(sku: Pick<Sku, "code" | "region">) {
+  return [sku.code, sku.region].filter(Boolean).join(" · ");
+}
+
+export function formatBillingCycleLabel(
+  billingCycle: PricePerUnit["billingCycle"],
 ) {
-  return [sku.code, sku.region, sku.billingPeriod].filter(Boolean).join(" · ");
+  return billingCycle === "one_time" ? "one time" : billingCycle;
+}
+
+export function formatBillingCycles(pricingOptions: PricePerUnit[] = []) {
+  if (pricingOptions.length === 0) return "No pricing configured";
+
+  return pricingOptions
+    .map((option) => formatBillingCycleLabel(option.billingCycle))
+    .join(" / ");
 }
 
 function isFreeAmount(amount?: string): boolean {
@@ -59,6 +77,7 @@ function formatCurrencyPrefix(currency?: string): string {
 }
 
 export function formatPriceLine(input: {
+  billingCycle?: PricePerUnit["billingCycle"];
   entity?: string;
   amount?: string;
   currency?: string;
@@ -70,7 +89,14 @@ export function formatPriceLine(input: {
   if (input.isPlanFree || isFreeAmount(input.amount)) return "Free";
   if (input.amount?.trim()) {
     const currency = formatCurrencyPrefix(input.currency);
-    const cadence = [input.entity, input.ratePeriod ?? input.period]
+    const cadence = [
+      input.entity,
+      input.ratePeriod ??
+        input.period ??
+        (input.billingCycle
+          ? formatBillingCycleLabel(input.billingCycle)
+          : undefined),
+    ]
       .filter(Boolean)
       .join(" / ");
 
@@ -82,4 +108,10 @@ export function formatPriceLine(input: {
 
 export function formatSeatType(seatType: Sku["seatType"]) {
   return seatType === "license_key" ? "license key" : "seat";
+}
+
+export function formatPurchaseConstraints(
+  sku: Pick<Sku, "purchaseConstraints">,
+) {
+  return sku.purchaseConstraints?.raw ?? "No purchase constraints";
 }

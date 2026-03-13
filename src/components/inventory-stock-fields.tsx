@@ -57,7 +57,7 @@ export function InventoryStockFields({
         </Field>
 
         <Field>
-          <FieldLabel>Inventory region</FieldLabel>
+          <FieldLabel>Offer region</FieldLabel>
           <Input value={region} readOnly />
           <FieldDescription>{regionDescription}</FieldDescription>
         </Field>

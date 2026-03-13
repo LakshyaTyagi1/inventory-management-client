@@ -27,9 +27,10 @@ export type InventoryRowEntry = {
 
 export type BillingDialogState = {
   entry: ViewSetupEntry | null;
-  billingPeriod: Sku["billingPeriod"];
   region: string;
-  pricePerUnit: PricePerUnit;
+  pricingOptions: PricePerUnit[];
+  purchaseConstraintsRaw: string;
+  activationTimeline: string;
   generatedCode: string;
   canSave: boolean;
 };

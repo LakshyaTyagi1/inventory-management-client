@@ -1,6 +1,12 @@
 import { BoxesIcon, PencilRulerIcon } from "lucide-react";
 
-import { formatPriceLine, formatSkuLabel } from "@/lib/catalog";
+import {
+  formatBillingCycleLabel,
+  formatBillingCycles,
+  formatPriceLine,
+  formatPurchaseConstraints,
+  formatSkuLabel,
+} from "@/lib/catalog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -15,6 +21,8 @@ export function BillingOptionTile({
   onEditBilling: (skuId: string) => void;
   onEditInventory: (input: { skuId: string; poolId?: string }) => void;
 }) {
+  const pricingOptions = entry.sku.pricingOptions ?? [];
+
   return (
     <div className="rounded-xl border p-4">
       <div className="flex items-start justify-between gap-3">
@@ -26,7 +34,7 @@ export function BillingOptionTile({
               .join(" · ")}
           </p>
         </div>
-        <Badge variant="outline">{entry.sku.billingPeriod}</Badge>
+        <Badge variant="outline">{entry.sku.region}</Badge>
       </div>
 
       <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
@@ -34,11 +42,24 @@ export function BillingOptionTile({
           {formatSkuLabel(entry.sku)}
         </span>
         <span className="rounded-md border bg-muted/40 px-2 py-1">
-          {formatPriceLine({
-            ...entry.sku.pricePerUnit,
-            fallbackText: "Pricing unavailable",
-          })}
+          {formatBillingCycles(pricingOptions)}
         </span>
+      </div>
+
+      <div className="mt-3 space-y-1 text-xs text-muted-foreground">
+        {pricingOptions.map((option) => (
+          <p key={`${entry.sku._id}-${option.billingCycle}`}>
+            {formatBillingCycleLabel(option.billingCycle)}:{" "}
+            {formatPriceLine({
+              ...option,
+              fallbackText: "Pricing unavailable",
+            })}
+          </p>
+        ))}
+        <p>{formatPurchaseConstraints(entry.sku)}</p>
+        {entry.sku.activationTimeline ? (
+          <p>{entry.sku.activationTimeline}</p>
+        ) : null}
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">

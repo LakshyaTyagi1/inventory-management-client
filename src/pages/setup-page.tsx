@@ -8,7 +8,10 @@ import {
   buildSkuCode,
   createEmptyPricePerUnit,
   ensureUniqueSkuCode,
-  normalizePricePerUnit,
+  nextPricingCycle,
+  normalizePricingOptions,
+  normalizeRegion,
+  parsePurchaseConstraints,
   pricePerUnitFromPlan,
   sameLabel,
   suggestedBillingPeriod,
@@ -28,13 +31,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import type {
-  DashboardSnapshot,
-  PricePerUnit,
-  Product,
-  Region,
-  Sku,
-} from "@/types";
+import type { DashboardSnapshot, PricePerUnit, Product, Region } from "@/types";
 
 function slugifySkuPart(value?: string): string {
   return (value ?? "")
@@ -53,6 +50,23 @@ function toSearchResult(product: Product): ProductSearchResult {
     description: product.description,
     logoUrl: product.logoUrl,
   };
+}
+
+function hasValidPricingOptions(pricingOptions: PricePerUnit[]): boolean {
+  if (pricingOptions.length === 0) return false;
+
+  const uniqueBillingCycles = new Set(
+    pricingOptions.map((pricingOption) => pricingOption.billingCycle),
+  );
+
+  return (
+    uniqueBillingCycles.size === pricingOptions.length &&
+    pricingOptions.every(
+      (pricingOption) =>
+        pricingOption.amount.trim().length > 0 &&
+        pricingOption.currency.trim().length > 0,
+    )
+  );
 }
 
 export function SetupPage({
@@ -78,11 +92,12 @@ export function SetupPage({
   const [pricingPlans, setPricingPlans] = useState<ProductPricingPlan[]>([]);
   const [loadingPricing, setLoadingPricing] = useState(false);
   const [planName, setPlanName] = useState("");
-  const [pricePerUnit, setPricePerUnit] = useState<PricePerUnit>(
+  const [pricingOptions, setPricingOptions] = useState<PricePerUnit[]>([
     createEmptyPricePerUnit(),
-  );
+  ]);
   const [skuRegion, setSkuRegion] = useState("");
-  const [skuBillingPeriod, setSkuBillingPeriod] = useState("monthly");
+  const [purchaseConstraintsRaw, setPurchaseConstraintsRaw] = useState("");
+  const [activationTimeline, setActivationTimeline] = useState("");
   const [inventoryQuantity, setInventoryQuantity] = useState(0);
   const [inventoryActor, setInventoryActor] = useState("operations");
 
@@ -91,9 +106,10 @@ export function SetupPage({
   const resetPricingSetup = () => {
     setPricingPlans([]);
     setPlanName("");
-    setPricePerUnit(createEmptyPricePerUnit());
+    setPricingOptions([createEmptyPricePerUnit()]);
     setSkuRegion("");
-    setSkuBillingPeriod("monthly");
+    setPurchaseConstraintsRaw("");
+    setActivationTimeline("");
     setInventoryQuantity(0);
     setInventoryActor("operations");
   };
@@ -140,11 +156,7 @@ export function SetupPage({
       if (plans.length > 0) {
         const initialPlan = plans[0]!;
         setPlanName(initialPlan.plan);
-        setPricePerUnit(pricePerUnitFromPlan(initialPlan));
-        const initialBillingPeriod = suggestedBillingPeriod(initialPlan);
-        if (initialBillingPeriod) {
-          setSkuBillingPeriod(initialBillingPeriod);
-        }
+        setPricingOptions([pricePerUnitFromPlan(initialPlan)]);
       }
     } finally {
       setLoadingPricing(false);
@@ -158,15 +170,11 @@ export function SetupPage({
       sameLabel(plan.plan, nextPlanName),
     );
     if (matchedPlan) {
-      setPricePerUnit(pricePerUnitFromPlan(matchedPlan));
-      const nextBillingPeriod = suggestedBillingPeriod(matchedPlan);
-      if (nextBillingPeriod) {
-        setSkuBillingPeriod(nextBillingPeriod);
-      }
+      setPricingOptions([pricePerUnitFromPlan(matchedPlan)]);
       return;
     }
 
-    setPricePerUnit(createEmptyPricePerUnit());
+    setPricingOptions([createEmptyPricePerUnit()]);
   };
 
   const handleEditExistingSetup = (skuId: string) => {
@@ -185,9 +193,14 @@ export function SetupPage({
     setLoadingPricing(false);
     setPricingPlans([]);
     setPlanName(catalogEntry.plan.name);
-    setPricePerUnit(catalogEntry.sku.pricePerUnit ?? createEmptyPricePerUnit());
-    setSkuRegion(catalogEntry.sku.region ?? "");
-    setSkuBillingPeriod(catalogEntry.sku.billingPeriod);
+    setPricingOptions(
+      catalogEntry.sku.pricingOptions.length > 0
+        ? catalogEntry.sku.pricingOptions
+        : [createEmptyPricePerUnit()],
+    );
+    setSkuRegion(catalogEntry.sku.region);
+    setPurchaseConstraintsRaw(catalogEntry.sku.purchaseConstraints?.raw ?? "");
+    setActivationTimeline(catalogEntry.sku.activationTimeline ?? "");
     setInventoryQuantity(matchingPool?.totalQuantity ?? 0);
     setInventoryActor("operations");
 
@@ -198,11 +211,34 @@ export function SetupPage({
     });
   };
 
-  const updatePricePerUnit = (field: keyof PricePerUnit, value: string) => {
-    setPricePerUnit((current) => ({
+  const updatePricingOption = (
+    index: number,
+    field: keyof PricePerUnit,
+    value: string,
+  ) => {
+    setPricingOptions((current) =>
+      current.map((pricingOption, currentIndex) =>
+        currentIndex === index
+          ? {
+              ...pricingOption,
+              [field]: value,
+            }
+          : pricingOption,
+      ),
+    );
+  };
+
+  const addPricingOption = () => {
+    setPricingOptions((current) => [
       ...current,
-      [field]: value,
-    }));
+      createEmptyPricePerUnit(nextPricingCycle(current)),
+    ]);
+  };
+
+  const removePricingOption = (index: number) => {
+    setPricingOptions((current) =>
+      current.filter((_, currentIndex) => currentIndex !== index),
+    );
   };
 
   const resetForm = () => {
@@ -214,10 +250,8 @@ export function SetupPage({
   };
 
   const normalizedPlanName = planName.trim();
-  const normalizedRegion = skuRegion.trim()
-    ? (skuRegion.trim().toUpperCase() as Region)
-    : undefined;
-  const inventoryRegion = (normalizedRegion ?? "GLOBAL") as Region;
+  const normalizedRegion = normalizeRegion(skuRegion);
+  const inventoryRegion = normalizedRegion ?? "";
 
   const selectedPricingPlan = pricingPlans.find((plan) =>
     sameLabel(plan.plan, planName),
@@ -240,24 +274,23 @@ export function SetupPage({
   const existingSku = existingPlan
     ? snapshot.skus.find(
         (sku) =>
-          sku.planId === existingPlan._id &&
-          sku.billingPeriod === skuBillingPeriod &&
-          (sku.region ?? undefined) === normalizedRegion,
+          sku.planId === existingPlan._id && sku.region === normalizedRegion,
       )
     : undefined;
 
   const existingInventoryPool = existingSku
-    ? snapshot.inventoryPools.find(
-        (pool) =>
-          pool.skuId === existingSku._id && pool.region === inventoryRegion,
-      )
+    ? snapshot.inventoryPools.find((pool) => pool.skuId === existingSku._id)
     : undefined;
+
+  const normalizedPricingOptions = useMemo(
+    () => normalizePricingOptions(pricingOptions),
+    [pricingOptions],
+  );
 
   const generatedSkuCode = useMemo(() => {
     const baseCode = buildSkuCode({
       productName: selectedProduct?.name,
       planName: normalizedPlanName,
-      billingPeriod: skuBillingPeriod,
       region: normalizedRegion,
     });
 
@@ -273,7 +306,6 @@ export function SetupPage({
     normalizedPlanName,
     normalizedRegion,
     selectedProduct?.name,
-    skuBillingPeriod,
     snapshot.skus,
   ]);
 
@@ -306,11 +338,10 @@ export function SetupPage({
     [skuCatalog, snapshot.inventoryPools, snapshot.skus],
   );
 
-  const hasPricing =
-    pricePerUnit.amount.trim().length > 0 &&
-    pricePerUnit.currency.trim().length > 0;
-  const detailsReady =
+  const hasPricing = hasValidPricingOptions(normalizedPricingOptions);
+  const productPlanReady =
     Boolean(selectedProduct) && normalizedPlanName.length >= 2;
+  const detailsReady = productPlanReady && Boolean(normalizedRegion);
   const canCreateBillingOption =
     detailsReady &&
     generatedSkuCode.trim().length >= 3 &&
@@ -341,28 +372,28 @@ export function SetupPage({
       : "Save setup";
 
   const saveMessage = !detailsReady
-    ? "Pick a product and plan first, then confirm the billing details and starting stock."
+    ? "Pick a product, plan, and region first, then confirm the offer details and starting stock."
     : existingSku
       ? existingInventoryPool
         ? inventoryWillAdjust
           ? `Saving will update tracked stock from ${existingInventoryPool.totalQuantity} to ${inventoryQuantity} in ${inventoryRegion}.`
-          : "This billing option already exists. Change the stock total below or adjust the billing details to create another option."
+          : "This regional offer already exists. Change the stock total below or adjust the offer details to create another option."
         : inventoryQuantity > 0
-          ? `Saving will start tracking ${inventoryQuantity} seats in ${inventoryRegion} for this existing billing option.`
-          : "This billing option already exists. Enter a starting stock to begin tracking inventory here."
+          ? `Saving will start tracking ${inventoryQuantity} seats in ${inventoryRegion} for this existing regional offer.`
+          : "This regional offer already exists. Enter a starting stock to begin tracking inventory here."
       : inventoryQuantity > 0
-        ? `Saving will create the billing option and start tracking ${inventoryQuantity} seats in ${inventoryRegion}.`
+        ? `Saving will create the regional offer and start tracking ${inventoryQuantity} seats in ${inventoryRegion}.`
         : existingProduct
-          ? "Saving will reuse the product already in your catalog and add this billing option."
-          : "Saving will create the billing option now. You can leave stock at 0 and track stock later.";
+          ? "Saving will reuse the product already in your catalog and add this regional offer."
+          : "Saving will create the regional offer now. You can leave stock at 0 and track stock later.";
 
   const successMessage = existingSku
     ? inventoryWillAdjust
       ? "Stock level updated."
       : "Inventory tracking started."
     : inventoryQuantity > 0
-      ? "Billing option and starting stock created."
-      : "Billing option created.";
+      ? "Regional offer and starting stock created."
+      : "Regional offer created.";
 
   return (
     <div ref={formRef} className="grid gap-4 xl:grid-cols-2">
@@ -387,13 +418,17 @@ export function SetupPage({
               event.preventDefault();
               if (!detailsReady || !canSubmit) return;
 
-              const normalizedPrice = normalizePricePerUnit(pricePerUnit);
+              const normalizedPurchaseConstraints = parsePurchaseConstraints(
+                purchaseConstraintsRaw,
+              );
+              const normalizedActivationTimeline =
+                activationTimeline.trim() || undefined;
 
               void runAction(async () => {
                 let nextSku = existingSku;
 
                 if (!existingSku) {
-                  if (!selectedProduct) {
+                  if (!selectedProduct || !normalizedRegion) {
                     throw new Error("product selection is required");
                   }
 
@@ -412,10 +447,11 @@ export function SetupPage({
                       },
                       sku: {
                         code: generatedSkuCode,
-                        billingPeriod: skuBillingPeriod as Sku["billingPeriod"],
                         region: normalizedRegion,
                         seatType: "seat",
-                        pricePerUnit: normalizedPrice,
+                        pricingOptions: normalizedPricingOptions,
+                        purchaseConstraints: normalizedPurchaseConstraints,
+                        activationTimeline: normalizedActivationTimeline,
                       },
                     });
 
@@ -432,10 +468,11 @@ export function SetupPage({
                     nextSku = await api.createSku({
                       planId: plan._id,
                       code: generatedSkuCode,
-                      billingPeriod: skuBillingPeriod as Sku["billingPeriod"],
                       region: normalizedRegion,
                       seatType: "seat",
-                      pricePerUnit: normalizedPrice,
+                      pricingOptions: normalizedPricingOptions,
+                      purchaseConstraints: normalizedPurchaseConstraints,
+                      activationTimeline: normalizedActivationTimeline,
                     });
                   }
                 }
@@ -445,7 +482,6 @@ export function SetupPage({
                 if (inventoryWillCreate) {
                   await api.createInventoryPool({
                     skuId: nextSku._id,
-                    region: inventoryRegion,
                     totalQuantity: inventoryQuantity,
                   });
                   return;
@@ -454,7 +490,6 @@ export function SetupPage({
                 if (inventoryWillAdjust) {
                   await api.adjustInventory({
                     skuId: nextSku._id,
-                    region: inventoryRegion,
                     change: inventoryDelta,
                     reason:
                       inventoryDelta >= 0 ? "MANUAL_ADD" : "MANUAL_REMOVE",
@@ -492,16 +527,20 @@ export function SetupPage({
 
               <BillingStep
                 selectedProduct={selectedProduct}
-                detailsReady={detailsReady}
+                detailsReady={productPlanReady}
                 loadingPricing={loadingPricing}
                 existingSku={existingSku}
                 generatedSkuCode={generatedSkuCode}
-                skuBillingPeriod={skuBillingPeriod}
-                onSkuBillingPeriodChange={setSkuBillingPeriod}
                 skuRegion={skuRegion}
                 onSkuRegionChange={setSkuRegion}
-                pricePerUnit={pricePerUnit}
-                onPricePerUnitChange={updatePricePerUnit}
+                pricingOptions={pricingOptions}
+                onPricingOptionChange={updatePricingOption}
+                onAddPricingOption={addPricingOption}
+                onRemovePricingOption={removePricingOption}
+                purchaseConstraints={purchaseConstraintsRaw}
+                onPurchaseConstraintsChange={setPurchaseConstraintsRaw}
+                activationTimeline={activationTimeline}
+                onActivationTimelineChange={setActivationTimeline}
               />
             </div>
 
@@ -511,7 +550,7 @@ export function SetupPage({
                 existingInventoryPool={existingInventoryPool}
                 inventoryQuantity={inventoryQuantity}
                 onInventoryQuantityChange={setInventoryQuantity}
-                inventoryRegion={inventoryRegion}
+                inventoryRegion={inventoryRegion || "Choose region"}
                 inventoryActor={inventoryActor}
                 onInventoryActorChange={setInventoryActor}
               />
@@ -519,8 +558,8 @@ export function SetupPage({
               <SetupReviewPanel
                 selectedProductName={selectedProduct?.name}
                 planName={normalizedPlanName}
-                billingPeriod={skuBillingPeriod}
-                inventoryRegion={inventoryRegion}
+                pricingOptions={pricingOptions}
+                inventoryRegion={inventoryRegion || "region"}
                 existingSku={existingSku}
                 generatedSkuCode={generatedSkuCode}
                 saveMessage={saveMessage}

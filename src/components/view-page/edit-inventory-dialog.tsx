@@ -58,12 +58,12 @@ export function EditInventoryDialog({
             quantityDescription={
               pool
                 ? "Enter the total stock you want on hand. We will add or remove the difference automatically."
-                : "Enter the stock you want to start tracking for this billing option."
+                : "Enter the stock you want to start tracking for this regional offer."
             }
             quantity={quantity}
             onQuantityChange={onQuantityChange}
             region={region}
-            regionDescription="Stock follows the billing region when one is set, or falls back to GLOBAL."
+            regionDescription="Stock is attached directly to the regional offer."
             actor={pool ? actor : undefined}
             onActorChange={pool ? onActorChange : undefined}
             actorDescription="Used only when the stock total changes."

@@ -1,10 +1,11 @@
 import { Badge } from "@/components/ui/badge";
-import type { Sku } from "@/types";
+import { formatBillingCycles } from "@/lib/catalog";
+import type { PricePerUnit, Sku } from "@/types";
 
 export function SetupReviewPanel({
   selectedProductName,
   planName,
-  billingPeriod,
+  pricingOptions,
   inventoryRegion,
   existingSku,
   generatedSkuCode,
@@ -12,7 +13,7 @@ export function SetupReviewPanel({
 }: {
   selectedProductName?: string;
   planName: string;
-  billingPeriod: string;
+  pricingOptions: PricePerUnit[];
   inventoryRegion: string;
   existingSku?: Sku;
   generatedSkuCode: string;
@@ -37,8 +38,12 @@ export function SetupReviewPanel({
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Badge variant="outline">{billingPeriod || "billing period"}</Badge>
-          <Badge variant="outline">{inventoryRegion}</Badge>
+          <Badge variant="outline">
+            {pricingOptions.length > 0
+              ? formatBillingCycles(pricingOptions)
+              : "billing cycles"}
+          </Badge>
+          <Badge variant="outline">{inventoryRegion || "region"}</Badge>
           {existingSku && <Badge variant="secondary">existing setup</Badge>}
         </div>
 

@@ -92,7 +92,7 @@ export function InventoryPoolsCard({
                       </span>
                     </div>
                   </TableCell>
-                  <TableCell>{entry.pool.region}</TableCell>
+                  <TableCell>{entry.sku?.region ?? "-"}</TableCell>
                   <TableCell>{entry.pool.totalQuantity}</TableCell>
                   <TableCell>
                     <Badge
@@ -117,7 +117,7 @@ export function InventoryPoolsCard({
                           poolId: entry.pool._id,
                         })
                       }
-                      aria-label={`Edit inventory for ${entry.product?.name ?? entry.pool.skuId} ${entry.pool.region}`}
+                      aria-label={`Edit inventory for ${entry.product?.name ?? entry.pool.skuId} ${entry.sku?.region ?? "offer"}`}
                     >
                       <PencilRulerIcon data-icon="inline-start" />
                       Edit
