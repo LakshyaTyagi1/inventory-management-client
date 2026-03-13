@@ -55,7 +55,7 @@ export function LowStockWatchCard({
                   {entry.product?.name ?? entry.pool.skuId}
                 </p>
                 <p className="truncate text-xs text-muted-foreground">
-                  {[entry.plan?.name, entry.pool.region]
+                  {[entry.plan?.name, entry.sku?.region]
                     .filter(Boolean)
                     .join(" · ")}
                 </p>

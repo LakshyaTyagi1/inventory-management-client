@@ -13,7 +13,10 @@ const preferredBillingCycleOrder: BillingCycle[] = [
   "one_time",
 ];
 
-export const billingCycleOptions = [
+export const billingCycleOptions: Array<{
+  value: BillingCycle;
+  label: string;
+}> = [
   { value: "monthly", label: "monthly" },
   { value: "yearly", label: "yearly" },
   { value: "one_time", label: "one time" },
@@ -29,7 +32,9 @@ export const commonCurrencyOptions = ["USD", "INR"].map((currency) => ({
   label: currency,
 }));
 
-export function orderBillingCycles(billingCycles: BillingCycle[]) {
+export function orderBillingCycles(
+  billingCycles: BillingCycle[],
+): BillingCycle[] {
   const uniqueBillingCycles = new Set(billingCycles);
 
   return preferredBillingCycleOrder.filter((billingCycle) =>
@@ -40,7 +45,7 @@ export function orderBillingCycles(billingCycles: BillingCycle[]) {
 export function toggleBillingCycleSelection(
   currentSelection: BillingCycle[],
   nextSelection: BillingCycle,
-) {
+): BillingCycle[] {
   const orderedSelection = orderBillingCycles(currentSelection);
 
   if (orderedSelection.includes(nextSelection)) {
