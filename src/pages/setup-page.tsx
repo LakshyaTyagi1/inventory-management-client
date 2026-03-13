@@ -5,16 +5,19 @@ import type { ProductPricingPlan, ProductSearchResult } from "@/lib/api";
 import { api } from "@/lib/api";
 import { buildSkuCatalogLookup } from "@/lib/catalog";
 import {
+  billingCyclesFromPricingOptions,
+  buildPricingOptionsFromDetails,
+  buildPurchaseConstraints,
   buildSkuCode,
-  createEmptyPricePerUnit,
+  createEmptyPricingDetails,
   ensureUniqueSkuCode,
-  nextPricingCycle,
+  hasValidPurchaseConstraints,
   normalizePricingOptions,
   normalizeRegion,
-  parsePurchaseConstraints,
+  pricingDetailsFromPricingOptions,
   pricePerUnitFromPlan,
+  purchaseConstraintsToFormValues,
   sameLabel,
-  suggestedBillingPeriod,
 } from "@/lib/billing-option";
 import type { ActionRunner } from "@/components/operations-app";
 import { BillingStep } from "@/components/setup-page/billing-step";
@@ -31,7 +34,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import type { DashboardSnapshot, PricePerUnit, Product, Region } from "@/types";
+import type {
+  BillingCycle,
+  DashboardSnapshot,
+  PricePerUnit,
+  PricingDetails,
+  Product,
+} from "@/types";
 
 function slugifySkuPart(value?: string): string {
   return (value ?? "")
@@ -92,11 +101,15 @@ export function SetupPage({
   const [pricingPlans, setPricingPlans] = useState<ProductPricingPlan[]>([]);
   const [loadingPricing, setLoadingPricing] = useState(false);
   const [planName, setPlanName] = useState("");
-  const [pricingOptions, setPricingOptions] = useState<PricePerUnit[]>([
-    createEmptyPricePerUnit(),
+  const [billingCycles, setBillingCycles] = useState<BillingCycle[]>([
+    "monthly",
   ]);
+  const [pricingDetails, setPricingDetails] = useState<PricingDetails>(
+    createEmptyPricingDetails(),
+  );
   const [skuRegion, setSkuRegion] = useState("");
-  const [purchaseConstraintsRaw, setPurchaseConstraintsRaw] = useState("");
+  const [minimumUnits, setMinimumUnits] = useState("");
+  const [maximumUnits, setMaximumUnits] = useState("");
   const [activationTimeline, setActivationTimeline] = useState("");
   const [inventoryQuantity, setInventoryQuantity] = useState(0);
   const [inventoryActor, setInventoryActor] = useState("operations");
@@ -106,9 +119,11 @@ export function SetupPage({
   const resetPricingSetup = () => {
     setPricingPlans([]);
     setPlanName("");
-    setPricingOptions([createEmptyPricePerUnit()]);
+    setBillingCycles(["monthly"]);
+    setPricingDetails(createEmptyPricingDetails());
     setSkuRegion("");
-    setPurchaseConstraintsRaw("");
+    setMinimumUnits("");
+    setMaximumUnits("");
     setActivationTimeline("");
     setInventoryQuantity(0);
     setInventoryActor("operations");
@@ -155,8 +170,14 @@ export function SetupPage({
       setPricingPlans(plans);
       if (plans.length > 0) {
         const initialPlan = plans[0]!;
+        const initialPricingOption = pricePerUnitFromPlan(initialPlan);
         setPlanName(initialPlan.plan);
-        setPricingOptions([pricePerUnitFromPlan(initialPlan)]);
+        setBillingCycles(
+          billingCyclesFromPricingOptions([initialPricingOption]),
+        );
+        setPricingDetails(
+          pricingDetailsFromPricingOptions([initialPricingOption]),
+        );
       }
     } finally {
       setLoadingPricing(false);
@@ -170,11 +191,17 @@ export function SetupPage({
       sameLabel(plan.plan, nextPlanName),
     );
     if (matchedPlan) {
-      setPricingOptions([pricePerUnitFromPlan(matchedPlan)]);
+      const matchedPricingOption = pricePerUnitFromPlan(matchedPlan);
+
+      setBillingCycles(billingCyclesFromPricingOptions([matchedPricingOption]));
+      setPricingDetails(
+        pricingDetailsFromPricingOptions([matchedPricingOption]),
+      );
       return;
     }
 
-    setPricingOptions([createEmptyPricePerUnit()]);
+    setBillingCycles(["monthly"]);
+    setPricingDetails(createEmptyPricingDetails());
   };
 
   const handleEditExistingSetup = (skuId: string) => {
@@ -193,13 +220,18 @@ export function SetupPage({
     setLoadingPricing(false);
     setPricingPlans([]);
     setPlanName(catalogEntry.plan.name);
-    setPricingOptions(
-      catalogEntry.sku.pricingOptions.length > 0
-        ? catalogEntry.sku.pricingOptions
-        : [createEmptyPricePerUnit()],
+    setBillingCycles(
+      billingCyclesFromPricingOptions(catalogEntry.sku.pricingOptions),
+    );
+    setPricingDetails(
+      pricingDetailsFromPricingOptions(catalogEntry.sku.pricingOptions),
     );
     setSkuRegion(catalogEntry.sku.region);
-    setPurchaseConstraintsRaw(catalogEntry.sku.purchaseConstraints?.raw ?? "");
+    const purchaseConstraintValues = purchaseConstraintsToFormValues(
+      catalogEntry.sku.purchaseConstraints,
+    );
+    setMinimumUnits(purchaseConstraintValues.minUnits);
+    setMaximumUnits(purchaseConstraintValues.maxUnits);
     setActivationTimeline(catalogEntry.sku.activationTimeline ?? "");
     setInventoryQuantity(matchingPool?.totalQuantity ?? 0);
     setInventoryActor("operations");
@@ -211,34 +243,11 @@ export function SetupPage({
     });
   };
 
-  const updatePricingOption = (
-    index: number,
-    field: keyof PricePerUnit,
-    value: string,
-  ) => {
-    setPricingOptions((current) =>
-      current.map((pricingOption, currentIndex) =>
-        currentIndex === index
-          ? {
-              ...pricingOption,
-              [field]: value,
-            }
-          : pricingOption,
-      ),
-    );
-  };
-
-  const addPricingOption = () => {
-    setPricingOptions((current) => [
+  const updatePricingDetails = (field: keyof PricingDetails, value: string) => {
+    setPricingDetails((current) => ({
       ...current,
-      createEmptyPricePerUnit(nextPricingCycle(current)),
-    ]);
-  };
-
-  const removePricingOption = (index: number) => {
-    setPricingOptions((current) =>
-      current.filter((_, currentIndex) => currentIndex !== index),
-    );
+      [field]: value,
+    }));
   };
 
   const resetForm = () => {
@@ -281,6 +290,15 @@ export function SetupPage({
   const existingInventoryPool = existingSku
     ? snapshot.inventoryPools.find((pool) => pool.skuId === existingSku._id)
     : undefined;
+
+  const pricingOptions = useMemo(
+    () =>
+      buildPricingOptionsFromDetails({
+        billingCycles,
+        pricingDetails,
+      }),
+    [billingCycles, pricingDetails],
+  );
 
   const normalizedPricingOptions = useMemo(
     () => normalizePricingOptions(pricingOptions),
@@ -339,6 +357,10 @@ export function SetupPage({
   );
 
   const hasPricing = hasValidPricingOptions(normalizedPricingOptions);
+  const hasValidConstraints = hasValidPurchaseConstraints({
+    minUnits: minimumUnits,
+    maxUnits: maximumUnits,
+  });
   const productPlanReady =
     Boolean(selectedProduct) && normalizedPlanName.length >= 2;
   const detailsReady = productPlanReady && Boolean(normalizedRegion);
@@ -346,6 +368,7 @@ export function SetupPage({
     detailsReady &&
     generatedSkuCode.trim().length >= 3 &&
     hasPricing &&
+    hasValidConstraints &&
     !loadingPricing &&
     !existingSku;
 
@@ -406,7 +429,7 @@ export function SetupPage({
             <div>
               <CardTitle>Create product setup</CardTitle>
               <CardDescription>
-                Add the billing option and starting stock together so operators
+                Add the regional offer and starting stock together so operators
                 only need one creation flow.
               </CardDescription>
             </div>
@@ -418,9 +441,10 @@ export function SetupPage({
               event.preventDefault();
               if (!detailsReady || !canSubmit) return;
 
-              const normalizedPurchaseConstraints = parsePurchaseConstraints(
-                purchaseConstraintsRaw,
-              );
+              const normalizedPurchaseConstraints = buildPurchaseConstraints({
+                minUnits: minimumUnits,
+                maxUnits: maximumUnits,
+              });
               const normalizedActivationTimeline =
                 activationTimeline.trim() || undefined;
 
@@ -533,12 +557,14 @@ export function SetupPage({
                 generatedSkuCode={generatedSkuCode}
                 skuRegion={skuRegion}
                 onSkuRegionChange={setSkuRegion}
-                pricingOptions={pricingOptions}
-                onPricingOptionChange={updatePricingOption}
-                onAddPricingOption={addPricingOption}
-                onRemovePricingOption={removePricingOption}
-                purchaseConstraints={purchaseConstraintsRaw}
-                onPurchaseConstraintsChange={setPurchaseConstraintsRaw}
+                billingCycles={billingCycles}
+                onBillingCyclesChange={setBillingCycles}
+                pricingDetails={pricingDetails}
+                onPricingDetailsChange={updatePricingDetails}
+                minimumUnits={minimumUnits}
+                onMinimumUnitsChange={setMinimumUnits}
+                maximumUnits={maximumUnits}
+                onMaximumUnitsChange={setMaximumUnits}
                 activationTimeline={activationTimeline}
                 onActivationTimelineChange={setActivationTimeline}
               />

@@ -5,6 +5,7 @@ import type {
   Product,
   Sku,
 } from "@/types";
+import { orderBillingCycles } from "@/lib/billing-option";
 
 type CatalogSnapshot = Pick<DashboardSnapshot, "products" | "plans" | "skus">;
 
@@ -50,8 +51,8 @@ export function formatBillingCycleLabel(
 export function formatBillingCycles(pricingOptions: PricePerUnit[] = []) {
   if (pricingOptions.length === 0) return "No pricing configured";
 
-  return pricingOptions
-    .map((option) => formatBillingCycleLabel(option.billingCycle))
+  return orderBillingCycles(pricingOptions.map((option) => option.billingCycle))
+    .map((billingCycle) => formatBillingCycleLabel(billingCycle))
     .join(" / ");
 }
 
@@ -113,5 +114,20 @@ export function formatSeatType(seatType: Sku["seatType"]) {
 export function formatPurchaseConstraints(
   sku: Pick<Sku, "purchaseConstraints">,
 ) {
-  return sku.purchaseConstraints?.raw ?? "No purchase constraints";
+  const minUnits = sku.purchaseConstraints?.minUnits;
+  const maxUnits = sku.purchaseConstraints?.maxUnits;
+
+  if (minUnits === undefined && maxUnits === undefined) {
+    return "No purchase limits";
+  }
+
+  if (minUnits !== undefined && maxUnits !== undefined) {
+    return `Minimum ${minUnits} · Maximum ${maxUnits}`;
+  }
+
+  if (minUnits !== undefined) {
+    return `Minimum ${minUnits} · Maximum Unlimited`;
+  }
+
+  return `Maximum ${maxUnits}`;
 }

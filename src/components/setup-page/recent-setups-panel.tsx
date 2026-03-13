@@ -39,7 +39,7 @@ export function RecentSetupsPanel({
       <CardHeader>
         <CardTitle>Continue from an existing setup</CardTitle>
         <CardDescription>
-          Load a recent billing option back into the create flow to top up stock
+          Load a recent regional offer back into the create flow to top up stock
           or branch a new variant without retyping everything.
         </CardDescription>
       </CardHeader>
@@ -52,7 +52,7 @@ export function RecentSetupsPanel({
               </EmptyMedia>
               <EmptyTitle>No setups yet</EmptyTitle>
               <EmptyDescription>
-                Your first billing option will appear here once you save it.
+                Your first regional offer will appear here once you save it.
               </EmptyDescription>
             </EmptyHeader>
           </Empty>

@@ -27,11 +27,16 @@ export type PricePerUnit = {
   ratePeriod?: string;
 };
 
+export type PricingDetails = {
+  amount: string;
+  currency: string;
+  entity: string;
+  ratePeriod: string;
+};
+
 export type PurchaseConstraints = {
-  raw: string;
   minUnits?: number;
   maxUnits?: number;
-  increment?: number;
 };
 
 export type Sku = {

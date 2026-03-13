@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { PricePerUnit } from "@/types";
+import type { BillingCycle, PricingDetails } from "@/types";
 
 import type { ViewSetupEntry } from "./types";
 
@@ -21,12 +21,14 @@ export function EditBillingDialog({
   region,
   onRegionChange,
   generatedCode,
-  pricingOptions,
-  onPricingOptionChange,
-  onAddPricingOption,
-  onRemovePricingOption,
-  purchaseConstraints,
-  onPurchaseConstraintsChange,
+  billingCycles,
+  onBillingCyclesChange,
+  pricingDetails,
+  onPricingDetailsChange,
+  minimumUnits,
+  onMinimumUnitsChange,
+  maximumUnits,
+  onMaximumUnitsChange,
   activationTimeline,
   onActivationTimelineChange,
   canSave,
@@ -39,16 +41,14 @@ export function EditBillingDialog({
   region: string;
   onRegionChange: (value: string) => void;
   generatedCode: string;
-  pricingOptions: PricePerUnit[];
-  onPricingOptionChange: (
-    index: number,
-    field: keyof PricePerUnit,
-    value: string,
-  ) => void;
-  onAddPricingOption: () => void;
-  onRemovePricingOption: (index: number) => void;
-  purchaseConstraints: string;
-  onPurchaseConstraintsChange: (value: string) => void;
+  billingCycles: BillingCycle[];
+  onBillingCyclesChange: (value: BillingCycle[]) => void;
+  pricingDetails: PricingDetails;
+  onPricingDetailsChange: (field: keyof PricingDetails, value: string) => void;
+  minimumUnits: string;
+  onMinimumUnitsChange: (value: string) => void;
+  maximumUnits: string;
+  onMaximumUnitsChange: (value: string) => void;
   activationTimeline: string;
   onActivationTimelineChange: (value: string) => void;
   canSave: boolean;
@@ -62,7 +62,7 @@ export function EditBillingDialog({
           <DialogHeader>
             <DialogTitle>Edit billing</DialogTitle>
             <DialogDescription>
-              Update the billing option for {entry.product.name} ·{" "}
+              Update the regional offer for {entry.product.name} ·{" "}
               {entry.plan.name} using the same fields operators see in the
               create flow.
             </DialogDescription>
@@ -80,17 +80,18 @@ export function EditBillingDialog({
             regionDisabled={entry.hasLockedRegion}
             catalogCode={generatedCode}
             catalogCodeDescription="The code updates automatically from the product, plan, and region."
-            pricingOptions={pricingOptions}
-            onPricingOptionChange={onPricingOptionChange}
-            onAddPricingOption={onAddPricingOption}
-            onRemovePricingOption={onRemovePricingOption}
-            purchaseConstraints={purchaseConstraints}
-            onPurchaseConstraintsChange={onPurchaseConstraintsChange}
+            billingCycles={billingCycles}
+            onBillingCyclesChange={onBillingCyclesChange}
+            pricingDetails={pricingDetails}
+            onPricingDetailsChange={onPricingDetailsChange}
+            minimumUnits={minimumUnits}
+            onMinimumUnitsChange={onMinimumUnitsChange}
+            maximumUnits={maximumUnits}
+            onMaximumUnitsChange={onMaximumUnitsChange}
             activationTimeline={activationTimeline}
             onActivationTimelineChange={onActivationTimelineChange}
             disabled={loading}
             amountDescription="Keep each billing cycle aligned with the operator-facing MSRP."
-            ratePeriodDescription="Only fill this in when the commercial quote uses a different cadence label."
           />
 
           <DialogFooter showCloseButton>

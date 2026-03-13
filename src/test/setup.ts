@@ -11,7 +11,7 @@ if (!window.matchMedia) {
       removeEventListener: () => undefined,
       addListener: () => undefined,
       removeListener: () => undefined,
-      dispatchEvent: () => false
-    })
+      dispatchEvent: () => false,
+    }),
   });
 }

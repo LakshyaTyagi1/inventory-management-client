@@ -2,9 +2,16 @@ import type { ProductPricingPlan } from "@/lib/api";
 import type {
   BillingCycle,
   PricePerUnit,
+  PricingDetails,
   PurchaseConstraints,
   Region,
 } from "@/types";
+
+const preferredBillingCycleOrder: BillingCycle[] = [
+  "monthly",
+  "yearly",
+  "one_time",
+];
 
 export const billingCycleOptions = [
   { value: "monthly", label: "monthly" },
@@ -16,6 +23,86 @@ export const commonRegionOptions = ["GCC", "INDIA"].map((region) => ({
   value: region,
   label: region,
 }));
+
+export const commonCurrencyOptions = ["USD", "INR"].map((currency) => ({
+  value: currency,
+  label: currency,
+}));
+
+export function orderBillingCycles(billingCycles: BillingCycle[]) {
+  const uniqueBillingCycles = new Set(billingCycles);
+
+  return preferredBillingCycleOrder.filter((billingCycle) =>
+    uniqueBillingCycles.has(billingCycle),
+  );
+}
+
+export function toggleBillingCycleSelection(
+  currentSelection: BillingCycle[],
+  nextSelection: BillingCycle,
+) {
+  const orderedSelection = orderBillingCycles(currentSelection);
+
+  if (orderedSelection.includes(nextSelection)) {
+    return orderedSelection.filter(
+      (billingCycle) => billingCycle !== nextSelection,
+    );
+  }
+
+  if (nextSelection === "one_time") {
+    return ["one_time"];
+  }
+
+  return orderBillingCycles([
+    ...orderedSelection.filter((billingCycle) => billingCycle !== "one_time"),
+    nextSelection,
+  ]);
+}
+
+export function createEmptyPricingDetails(): PricingDetails {
+  const emptyPricePerUnit = createEmptyPricePerUnit();
+
+  return {
+    amount: emptyPricePerUnit.amount,
+    currency: emptyPricePerUnit.currency,
+    entity: emptyPricePerUnit.entity ?? "",
+    ratePeriod: emptyPricePerUnit.ratePeriod ?? "",
+  };
+}
+
+export function pricingDetailsFromPricingOptions(
+  pricingOptions: PricePerUnit[],
+): PricingDetails {
+  const primaryPricingOption = pricingOptions[0] ?? createEmptyPricePerUnit();
+
+  return {
+    amount: primaryPricingOption.amount,
+    currency: primaryPricingOption.currency,
+    entity: primaryPricingOption.entity ?? "",
+    ratePeriod: primaryPricingOption.ratePeriod ?? "",
+  };
+}
+
+export function billingCyclesFromPricingOptions(
+  pricingOptions: PricePerUnit[],
+) {
+  return orderBillingCycles(
+    pricingOptions.map((pricingOption) => pricingOption.billingCycle),
+  );
+}
+
+export function buildPricingOptionsFromDetails(input: {
+  billingCycles: BillingCycle[];
+  pricingDetails: PricingDetails;
+}): PricePerUnit[] {
+  return orderBillingCycles(input.billingCycles).map((billingCycle) => ({
+    billingCycle,
+    amount: input.pricingDetails.amount,
+    currency: input.pricingDetails.currency,
+    entity: input.pricingDetails.entity,
+    ratePeriod: input.pricingDetails.ratePeriod,
+  }));
+}
 
 export function createEmptyPricePerUnit(
   billingCycle: BillingCycle = "monthly",
@@ -82,10 +169,8 @@ export function normalizePricingOptions(
 }
 
 export function nextPricingCycle(pricingOptions: PricePerUnit[]): BillingCycle {
-  const preferredOrder: BillingCycle[] = ["monthly", "yearly", "one_time"];
-
   return (
-    preferredOrder.find(
+    preferredBillingCycleOrder.find(
       (billingCycle) =>
         !pricingOptions.some((option) => option.billingCycle === billingCycle),
     ) ?? "monthly"
@@ -145,48 +230,69 @@ export function normalizeRegion(value: string): Region | undefined {
   return value.trim() ? (value.trim().toUpperCase() as Region) : undefined;
 }
 
-export function parsePurchaseConstraints(
-  rawValue: string,
-): PurchaseConstraints | undefined {
-  const raw = rawValue.trim();
+function parsePositiveInteger(value: string): number | undefined {
+  const normalizedValue = value.trim();
 
-  if (!raw) return undefined;
+  if (!normalizedValue) return undefined;
+  if (!/^\d+$/.test(normalizedValue)) return undefined;
 
-  const bundleMatch = raw.match(/^(\d+)\s*\/\s*then bundles? of\s*(\d+)$/i);
-  if (bundleMatch) {
-    return {
-      raw,
-      minUnits: Number(bundleMatch[1]),
-      increment: Number(bundleMatch[2]),
-    };
+  const parsedValue = Number(normalizedValue);
+
+  return Number.isInteger(parsedValue) && parsedValue > 0
+    ? parsedValue
+    : undefined;
+}
+
+export function hasValidPurchaseConstraints(input: {
+  minUnits: string;
+  maxUnits: string;
+}): boolean {
+  const minUnits = parsePositiveInteger(input.minUnits);
+  const maxUnits = parsePositiveInteger(input.maxUnits);
+
+  if (input.minUnits.trim() && minUnits === undefined) {
+    return false;
   }
 
-  const rangeMatch = raw.match(/^(\d+)\s*\/\s*(\d+)$/);
-  if (rangeMatch) {
-    return {
-      raw,
-      minUnits: Number(rangeMatch[1]),
-      maxUnits: Number(rangeMatch[2]),
-    };
+  if (input.maxUnits.trim() && maxUnits === undefined) {
+    return false;
   }
 
-  const openMatch = raw.match(/^(\d+)\s*\/\s*as many needed$/i);
-  if (openMatch) {
-    return {
-      raw,
-      minUnits: Number(openMatch[1]),
-    };
+  if (minUnits !== undefined && maxUnits !== undefined && maxUnits < minUnits) {
+    return false;
   }
 
-  const singleMatch = raw.match(/^(\d+)$/);
-  if (singleMatch) {
-    const value = Number(singleMatch[1]);
-    return {
-      raw,
-      minUnits: value,
-      maxUnits: value,
-    };
+  return true;
+}
+
+export function buildPurchaseConstraints(input: {
+  minUnits: string;
+  maxUnits: string;
+}): PurchaseConstraints | undefined {
+  const minUnits = parsePositiveInteger(input.minUnits);
+  const maxUnits = parsePositiveInteger(input.maxUnits);
+
+  if (minUnits === undefined && maxUnits === undefined) {
+    return undefined;
   }
 
-  return { raw };
+  return {
+    ...(minUnits !== undefined ? { minUnits } : {}),
+    ...(maxUnits !== undefined ? { maxUnits } : {}),
+  };
+}
+
+export function purchaseConstraintsToFormValues(
+  purchaseConstraints?: PurchaseConstraints,
+) {
+  return {
+    minUnits:
+      purchaseConstraints?.minUnits !== undefined
+        ? String(purchaseConstraints.minUnits)
+        : "",
+    maxUnits:
+      purchaseConstraints?.maxUnits !== undefined
+        ? String(purchaseConstraints.maxUnits)
+        : "",
+  };
 }

@@ -3,7 +3,7 @@ import { PackageIcon } from "lucide-react";
 import type { ProductSearchResult } from "@/lib/api";
 import { BillingDetailsFields } from "@/components/billing-details-fields";
 import { FieldGroup } from "@/components/ui/field";
-import type { PricePerUnit, Sku } from "@/types";
+import type { BillingCycle, PricingDetails, Sku } from "@/types";
 
 import { SetupStepCard } from "./setup-step-card";
 
@@ -15,12 +15,14 @@ export function BillingStep({
   generatedSkuCode,
   skuRegion,
   onSkuRegionChange,
-  pricingOptions,
-  onPricingOptionChange,
-  onAddPricingOption,
-  onRemovePricingOption,
-  purchaseConstraints,
-  onPurchaseConstraintsChange,
+  billingCycles,
+  onBillingCyclesChange,
+  pricingDetails,
+  onPricingDetailsChange,
+  minimumUnits,
+  onMinimumUnitsChange,
+  maximumUnits,
+  onMaximumUnitsChange,
   activationTimeline,
   onActivationTimelineChange,
 }: {
@@ -31,16 +33,14 @@ export function BillingStep({
   generatedSkuCode: string;
   skuRegion: string;
   onSkuRegionChange: (value: string) => void;
-  pricingOptions: PricePerUnit[];
-  onPricingOptionChange: (
-    index: number,
-    field: keyof PricePerUnit,
-    value: string,
-  ) => void;
-  onAddPricingOption: () => void;
-  onRemovePricingOption: (index: number) => void;
-  purchaseConstraints: string;
-  onPurchaseConstraintsChange: (value: string) => void;
+  billingCycles: BillingCycle[];
+  onBillingCyclesChange: (value: BillingCycle[]) => void;
+  pricingDetails: PricingDetails;
+  onPricingDetailsChange: (field: keyof PricingDetails, value: string) => void;
+  minimumUnits: string;
+  onMinimumUnitsChange: (value: string) => void;
+  maximumUnits: string;
+  onMaximumUnitsChange: (value: string) => void;
   activationTimeline: string;
   onActivationTimelineChange: (value: string) => void;
 }) {
@@ -66,17 +66,18 @@ export function BillingStep({
                   ? "Generated from the product, plan, and region."
                   : "Choose a plan in step 1 and a region here to generate the catalog code."
             }
-            pricingOptions={pricingOptions}
-            onPricingOptionChange={onPricingOptionChange}
-            onAddPricingOption={onAddPricingOption}
-            onRemovePricingOption={onRemovePricingOption}
-            purchaseConstraints={purchaseConstraints}
-            onPurchaseConstraintsChange={onPurchaseConstraintsChange}
+            billingCycles={billingCycles}
+            onBillingCyclesChange={onBillingCyclesChange}
+            pricingDetails={pricingDetails}
+            onPricingDetailsChange={onPricingDetailsChange}
+            minimumUnits={minimumUnits}
+            onMinimumUnitsChange={onMinimumUnitsChange}
+            maximumUnits={maximumUnits}
+            onMaximumUnitsChange={onMaximumUnitsChange}
             activationTimeline={activationTimeline}
             onActivationTimelineChange={onActivationTimelineChange}
             disabled={!detailsReady || loadingPricing}
             amountDescription="Required for every billing cycle you keep on the offer."
-            ratePeriodDescription="Only fill this in when the commercial quote uses a different cadence label."
           />
         </FieldGroup>
       ) : (

@@ -8,9 +8,9 @@ import { ViewWorkspace } from "@/components/view-page/view-workspace";
 import { api } from "@/lib/api";
 import type { DashboardSnapshot, PricePerUnit } from "@/types";
 
-import { BillingOptionsPage } from "./billing-options-page";
-import { InventoryPoolsPage } from "./inventory-pools-page";
-import { ViewPage } from "./view-page";
+import { BillingOptionsPage } from "../billing-options-page";
+import { InventoryPoolsPage } from "../inventory-pools-page";
+import { ViewPage } from "../view-page";
 
 const pricingOption = (
   billingCycle: PricePerUnit["billingCycle"],
@@ -104,7 +104,6 @@ const snapshot: DashboardSnapshot = {
       seatType: "seat",
       pricingOptions: [pricingOption("monthly", "18")],
       purchaseConstraints: {
-        raw: "1 / as many needed",
         minUnits: 1,
       },
       activationTimeline: "5 Days",
@@ -118,9 +117,8 @@ const snapshot: DashboardSnapshot = {
       seatType: "seat",
       pricingOptions: [pricingOption("yearly", "120")],
       purchaseConstraints: {
-        raw: "3 / then bundles of 5",
         minUnits: 3,
-        increment: 5,
+        maxUnits: 15,
       },
       activationTimeline: "7 Working Days",
       createdAt: "2026-03-11T00:00:00.000Z",
@@ -283,6 +281,12 @@ describe("view page", () => {
       fireEvent.change(screen.getByPlaceholderText(/e\.g\. 12/i), {
         target: { value: "25" },
       });
+      fireEvent.change(screen.getByPlaceholderText(/^e\.g\. 1$/i), {
+        target: { value: "2" },
+      });
+      fireEvent.change(screen.getByPlaceholderText(/e\.g\. 500/i), {
+        target: { value: "10" },
+      });
     });
 
     await act(async () => {
@@ -304,8 +308,8 @@ describe("view page", () => {
           },
         ],
         purchaseConstraints: {
-          raw: "1 / as many needed",
-          minUnits: 1,
+          minUnits: 2,
+          maxUnits: 10,
         },
         activationTimeline: "5 Days",
       });

@@ -29,7 +29,8 @@ export type BillingDialogState = {
   entry: ViewSetupEntry | null;
   region: string;
   pricingOptions: PricePerUnit[];
-  purchaseConstraintsRaw: string;
+  minimumUnits: string;
+  maximumUnits: string;
   activationTimeline: string;
   generatedCode: string;
   canSave: boolean;

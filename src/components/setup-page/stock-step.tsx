@@ -39,12 +39,12 @@ export function StockStep({
             quantityDescription={
               existingInventoryPool
                 ? "Enter the total stock you want on hand. We will add or remove the difference automatically."
-                : "Leave 0 if you want to save the billing option first and track stock later."
+                : "Leave 0 if you want to save the regional offer first and track stock later."
             }
             quantity={inventoryQuantity}
             onQuantityChange={onInventoryQuantityChange}
             region={inventoryRegion}
-            regionDescription="Stock follows the billing region when one is set, or falls back to GLOBAL."
+            regionDescription="Stock is attached directly to the regional offer."
             actor={existingInventoryPool ? inventoryActor : undefined}
             onActorChange={
               existingInventoryPool ? onInventoryActorChange : undefined
@@ -61,7 +61,7 @@ export function StockStep({
         </FieldGroup>
       ) : (
         <p className="rounded-lg border border-dashed px-4 py-3 text-sm text-muted-foreground">
-          Choose the billing option first, then decide whether you want to start
+          Choose the regional offer first, then decide whether you want to start
           tracking stock immediately.
         </p>
       )}

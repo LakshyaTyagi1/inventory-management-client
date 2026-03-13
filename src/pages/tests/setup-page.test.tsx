@@ -1,12 +1,18 @@
 import { act } from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ActionRunner } from "@/components/operations-app";
 import { api } from "@/lib/api";
 import type { DashboardSnapshot, PricePerUnit } from "@/types";
 
-import { SetupPage } from "./setup-page";
+import { SetupPage } from "../setup-page";
 
 const emptySnapshot: DashboardSnapshot = {
   products: [],
@@ -64,13 +70,18 @@ const catalogResponse = {
     seatType: "seat" as const,
     pricingOptions: [pricingOption("monthly", "18")],
     purchaseConstraints: {
-      raw: "1 / as many needed",
       minUnits: 1,
     },
     activationTimeline: "5 Days",
     createdAt: "2026-03-12T00:00:00.000Z",
   },
 };
+
+function getStockQuantityInput() {
+  const spinbuttons = screen.getAllByRole("spinbutton");
+
+  return spinbuttons[spinbuttons.length - 1]!;
+}
 
 async function searchAndSelectProduct() {
   await act(async () => {
@@ -103,6 +114,20 @@ async function selectComboboxOption(index: number, optionLabel: string) {
 
   await act(async () => {
     fireEvent.click(optionNode ?? candidates[0]!);
+  });
+}
+
+async function toggleBillingCycle(optionLabel: string) {
+  await act(async () => {
+    fireEvent.click(screen.getByRole("button", { name: /billing cycles/i }));
+  });
+
+  await act(async () => {
+    fireEvent.click(
+      screen.getByRole("option", {
+        name: new RegExp(`^${optionLabel}$`, "i"),
+      }),
+    );
   });
 }
 
@@ -166,7 +191,7 @@ describe("setup page", () => {
     });
   });
 
-  it("creates starting stock together with the regional offer", async () => {
+  it("creates starting stock together with shared monthly and yearly pricing", async () => {
     vi.spyOn(api, "getProductPricing").mockResolvedValue([
       {
         plan: "Standard",
@@ -202,11 +227,33 @@ describe("setup page", () => {
       expect(screen.getByPlaceholderText(/e\.g\. 12/i)).toHaveValue("18");
     });
 
+    expect(
+      screen.queryByRole("textbox", { name: /rate period/i }),
+    ).not.toBeInTheDocument();
+
+    await toggleBillingCycle("yearly");
+
+    const billingCycleTrigger = screen.getByRole("button", {
+      name: /billing cycles/i,
+    });
+    expect(
+      within(billingCycleTrigger).getByText(/^monthly$/i),
+    ).toBeInTheDocument();
+    expect(
+      within(billingCycleTrigger).getByText(/^yearly$/i),
+    ).toBeInTheDocument();
+
     await act(async () => {
       fireEvent.change(screen.getByPlaceholderText(/e\.g\. 12/i), {
         target: { value: "21" },
       });
-      fireEvent.change(screen.getByRole("spinbutton"), {
+      fireEvent.change(screen.getByPlaceholderText(/^e\.g\. 1$/i), {
+        target: { value: "3" },
+      });
+      fireEvent.change(screen.getByPlaceholderText(/e\.g\. 500/i), {
+        target: { value: "20" },
+      });
+      fireEvent.change(getStockQuantityInput(), {
         target: { value: "24" },
       });
     });
@@ -232,7 +279,18 @@ describe("setup page", () => {
                 entity: "user",
                 ratePeriod: "month",
               },
+              {
+                billingCycle: "yearly",
+                amount: "21",
+                currency: "USD",
+                entity: "user",
+                ratePeriod: "month",
+              },
             ],
+            purchaseConstraints: {
+              minUnits: 3,
+              maxUnits: 20,
+            },
           }),
         }),
       );
@@ -311,7 +369,7 @@ describe("setup page", () => {
       fireEvent.change(screen.getByPlaceholderText(/e\.g\. 12/i), {
         target: { value: "45" },
       });
-      fireEvent.change(screen.getByRole("spinbutton"), {
+      fireEvent.change(getStockQuantityInput(), {
         target: { value: "8" },
       });
     });
@@ -395,7 +453,6 @@ describe("setup page", () => {
               seatType: "seat",
               pricingOptions: [pricingOption("monthly", "18")],
               purchaseConstraints: {
-                raw: "1 / as many needed",
                 minUnits: 1,
               },
               activationTimeline: "5 Days",
@@ -422,11 +479,11 @@ describe("setup page", () => {
 
     await waitFor(() => {
       expect(screen.getByDisplayValue("jira-standard-gcc")).toBeInTheDocument();
-      expect(screen.getByRole("spinbutton")).toHaveValue(12);
+      expect(getStockQuantityInput()).toHaveValue(12);
     });
 
     await act(async () => {
-      fireEvent.change(screen.getByRole("spinbutton"), {
+      fireEvent.change(getStockQuantityInput(), {
         target: { value: "18" },
       });
     });

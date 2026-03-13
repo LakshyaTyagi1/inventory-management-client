@@ -9,17 +9,21 @@ import type {
   ViewSetupEntry,
 } from "@/components/view-page/types";
 import {
+  billingCyclesFromPricingOptions,
+  buildPricingOptionsFromDetails,
+  buildPurchaseConstraints,
   buildSkuCode,
-  createEmptyPricePerUnit,
+  createEmptyPricingDetails,
   ensureUniqueSkuCode,
-  nextPricingCycle,
+  hasValidPurchaseConstraints,
   normalizePricingOptions,
   normalizeRegion,
-  parsePurchaseConstraints,
+  pricingDetailsFromPricingOptions,
+  purchaseConstraintsToFormValues,
 } from "@/lib/billing-option";
 import { buildInventoryRows, buildViewSetupEntries } from "@/lib/view-data";
 import { api } from "@/lib/api";
-import type { DashboardSnapshot, PricePerUnit, Sku } from "@/types";
+import type { BillingCycle, DashboardSnapshot, PricingDetails } from "@/types";
 
 type InventoryDialogTarget = {
   skuId: string;
@@ -48,10 +52,13 @@ export function ViewWorkspace({
     null,
   );
   const [billingRegion, setBillingRegion] = useState("");
-  const [billingPricingOptions, setBillingPricingOptions] = useState<
-    PricePerUnit[]
-  >([createEmptyPricePerUnit()]);
-  const [purchaseConstraintsRaw, setPurchaseConstraintsRaw] = useState("");
+  const [billingCycles, setBillingCycles] = useState<BillingCycle[]>([
+    "monthly",
+  ]);
+  const [billingPricingDetails, setBillingPricingDetails] =
+    useState<PricingDetails>(createEmptyPricingDetails());
+  const [billingMinUnits, setBillingMinUnits] = useState("");
+  const [billingMaxUnits, setBillingMaxUnits] = useState("");
   const [activationTimeline, setActivationTimeline] = useState("");
   const [inventoryDialogTarget, setInventoryDialogTarget] =
     useState<InventoryDialogTarget | null>(null);
@@ -100,14 +107,17 @@ export function ViewWorkspace({
     if (!activeBillingEntry) return;
 
     setBillingRegion(activeBillingEntry.sku.region);
-    setBillingPricingOptions(
-      activeBillingEntry.sku.pricingOptions.length > 0
-        ? activeBillingEntry.sku.pricingOptions
-        : [createEmptyPricePerUnit()],
+    setBillingCycles(
+      billingCyclesFromPricingOptions(activeBillingEntry.sku.pricingOptions),
     );
-    setPurchaseConstraintsRaw(
-      activeBillingEntry.sku.purchaseConstraints?.raw ?? "",
+    setBillingPricingDetails(
+      pricingDetailsFromPricingOptions(activeBillingEntry.sku.pricingOptions),
     );
+    const purchaseConstraintValues = purchaseConstraintsToFormValues(
+      activeBillingEntry.sku.purchaseConstraints,
+    );
+    setBillingMinUnits(purchaseConstraintValues.minUnits);
+    setBillingMaxUnits(purchaseConstraintValues.maxUnits);
     setActivationTimeline(activeBillingEntry.sku.activationTimeline ?? "");
   }, [activeBillingEntry]);
 
@@ -117,6 +127,15 @@ export function ViewWorkspace({
     setInventoryQuantity(activeInventoryPool?.totalQuantity ?? 0);
     setInventoryActor("operations");
   }, [activeInventoryPool, inventoryDialogTarget]);
+
+  const billingPricingOptions = useMemo(
+    () =>
+      buildPricingOptionsFromDetails({
+        billingCycles,
+        pricingDetails: billingPricingDetails,
+      }),
+    [billingCycles, billingPricingDetails],
+  );
 
   const normalizedBillingRegion = normalizeRegion(billingRegion);
   const generatedBillingCode = useMemo(() => {
@@ -140,9 +159,22 @@ export function ViewWorkspace({
     () => normalizePricingOptions(billingPricingOptions),
     [billingPricingOptions],
   );
+  const normalizedBillingPurchaseConstraints = useMemo(
+    () =>
+      buildPurchaseConstraints({
+        minUnits: billingMinUnits,
+        maxUnits: billingMaxUnits,
+      }),
+    [billingMaxUnits, billingMinUnits],
+  );
+  const billingHasValidConstraints = hasValidPurchaseConstraints({
+    minUnits: billingMinUnits,
+    maxUnits: billingMaxUnits,
+  });
 
   const billingHasPricing =
     Boolean(normalizedBillingRegion) &&
+    billingHasValidConstraints &&
     normalizedBillingPricingOptions.length > 0 &&
     normalizedBillingPricingOptions.every(
       (pricingOption) =>
@@ -163,8 +195,8 @@ export function ViewWorkspace({
       activeBillingEntry.sku.code !== generatedBillingCode ||
       JSON.stringify(currentBillingPricingOptions) !==
         JSON.stringify(normalizedBillingPricingOptions) ||
-      (activeBillingEntry.sku.purchaseConstraints?.raw ?? "") !==
-        purchaseConstraintsRaw.trim() ||
+      JSON.stringify(activeBillingEntry.sku.purchaseConstraints ?? null) !==
+        JSON.stringify(normalizedBillingPurchaseConstraints ?? null) ||
       (activeBillingEntry.sku.activationTimeline ?? "") !==
         activationTimeline.trim());
 
@@ -175,33 +207,13 @@ export function ViewWorkspace({
       : inventoryQuantity > 0;
 
   const updateBillingPricingOption = (
-    index: number,
-    field: keyof PricePerUnit,
+    field: keyof PricingDetails,
     value: string,
   ) => {
-    setBillingPricingOptions((current) =>
-      current.map((pricingOption, currentIndex) =>
-        currentIndex === index
-          ? {
-              ...pricingOption,
-              [field]: value,
-            }
-          : pricingOption,
-      ),
-    );
-  };
-
-  const addBillingPricingOption = () => {
-    setBillingPricingOptions((current) => [
+    setBillingPricingDetails((current) => ({
       ...current,
-      createEmptyPricePerUnit(nextPricingCycle(current)),
-    ]);
-  };
-
-  const removeBillingPricingOption = (index: number) => {
-    setBillingPricingOptions((current) =>
-      current.filter((_, currentIndex) => currentIndex !== index),
-    );
+      [field]: value,
+    }));
   };
 
   const closeBillingDialog = () => setBillingDialogSkuId(null);
@@ -229,12 +241,14 @@ export function ViewWorkspace({
         region={billingRegion}
         onRegionChange={setBillingRegion}
         generatedCode={generatedBillingCode}
-        pricingOptions={billingPricingOptions}
-        onPricingOptionChange={updateBillingPricingOption}
-        onAddPricingOption={addBillingPricingOption}
-        onRemovePricingOption={removeBillingPricingOption}
-        purchaseConstraints={purchaseConstraintsRaw}
-        onPurchaseConstraintsChange={setPurchaseConstraintsRaw}
+        billingCycles={billingCycles}
+        onBillingCyclesChange={setBillingCycles}
+        pricingDetails={billingPricingDetails}
+        onPricingDetailsChange={updateBillingPricingOption}
+        minimumUnits={billingMinUnits}
+        onMinimumUnitsChange={setBillingMinUnits}
+        maximumUnits={billingMaxUnits}
+        onMaximumUnitsChange={setBillingMaxUnits}
         activationTimeline={activationTimeline}
         onActivationTimelineChange={setActivationTimeline}
         canSave={billingHasPricing && billingChanged}
@@ -249,9 +263,7 @@ export function ViewWorkspace({
                 region: normalizedBillingRegion,
                 seatType: activeBillingEntry.sku.seatType,
                 pricingOptions: normalizedBillingPricingOptions,
-                purchaseConstraints: parsePurchaseConstraints(
-                  purchaseConstraintsRaw,
-                ),
+                purchaseConstraints: normalizedBillingPurchaseConstraints,
                 activationTimeline: activationTimeline.trim() || undefined,
               }),
             "Regional offer updated.",
