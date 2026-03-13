@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { RotateCcwIcon } from "lucide-react";
 import { Button } from "./button";
 import { Input } from "./input";
@@ -41,8 +41,15 @@ export function SelectOrInput({
   const [mode, setMode] = useState<"select" | "custom">(
     value !== "" && !inOptions ? "custom" : "select",
   );
+  const showCustomInput = value === "" ? mode === "custom" : !inOptions;
 
-  if (mode === "custom") {
+  useEffect(() => {
+    if (value === "") return;
+
+    setMode(inOptions ? "select" : "custom");
+  }, [inOptions, value]);
+
+  if (showCustomInput) {
     return (
       <div className="flex gap-2">
         <Input
@@ -58,7 +65,7 @@ export function SelectOrInput({
           type="button"
           variant="outline"
           size="icon"
-          className="shrink-0"
+          className="size-11 shrink-0"
           title="Choose from list"
           onClick={() => {
             setMode("select");
