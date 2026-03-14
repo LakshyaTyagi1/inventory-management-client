@@ -305,9 +305,13 @@ export function OperationsApp() {
       <SidebarInset className="min-h-screen bg-background">
         <header className="sticky top-0 z-10 flex items-center justify-between border-b bg-background/95 px-4 py-5 backdrop-blur md:px-6">
           <div className="flex items-center gap-3">
-            <div className="flex flex-col gap-0.5">
-              <h1 className="text-2xl font-semibold tracking-tight">{currentMeta.title}</h1>
-              <p className="text-sm text-muted-foreground">{currentMeta.description}</p>
+            <div className="min-w-0">
+              <h1 className="truncate text-2xl font-semibold tracking-tight">
+                {currentMeta.title}
+              </h1>
+              <p className="truncate text-sm text-muted-foreground">
+                {currentMeta.description}
+              </p>
             </div>
           </div>
 
