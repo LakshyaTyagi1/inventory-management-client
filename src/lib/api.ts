@@ -9,6 +9,8 @@ import type {
 } from "../types";
 
 const apiBaseUrl = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:4000";
+const searchApiBaseUrl = import.meta.env.VITE_SEARCH_API_URL?.trim();
+const searchApiKey = import.meta.env.VITE_SEARCH_API_KEY?.trim();
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${apiBaseUrl}${path}`, {
@@ -54,14 +56,20 @@ export type CatalogEntryResponse = {
   sku: Sku;
 };
 
-type ExternalProductResult = {
-  _id: string;
+type SearchApiProductResult = {
   product_name: string;
   company: string;
-  logo_url: string;
-  website: string;
+  logo_url?: string;
+  overview?: string;
   weburl: string;
-  category: Array<{ name: string }>;
+  category?: Array<{ name: string }>;
+};
+
+type SearchApiResponse = {
+  message?: string;
+  data?: {
+    products?: SearchApiProductResult[];
+  };
 };
 
 const zoftwareBaseUrl = "https://api.zoftwarehub.com";
@@ -73,19 +81,38 @@ export const api = {
     query: string,
     limit = 6,
   ): Promise<ProductSearchResult[]> => {
+    if (!searchApiBaseUrl || !searchApiKey) {
+      throw new Error("search api is not configured");
+    }
+
     const response = await fetch(
-      `${zoftwareBaseUrl}/api/v1/search/product/${encodeURIComponent(query)}?limit=${limit}`,
+      `${searchApiBaseUrl.replace(/\/+$/, "")}/api/v1/search/${encodeURIComponent(query)}?productLimit=${limit}`,
+      {
+        headers: {
+          "X-API-Key": searchApiKey,
+          accept: "application/json",
+        },
+      },
     );
-    if (!response.ok) throw new Error("product search failed");
-    const json = (await response.json()) as { data: ExternalProductResult[] };
-    return (json.data ?? []).map((item) => ({
-      id: item._id,
-      slug:
-        item.weburl ??
-        item.product_name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+    const json = (await response
+      .json()
+      .catch(() => ({
+        message: "product search failed",
+      }))) as SearchApiResponse;
+
+    if (!response.ok) {
+      throw new Error(json.message ?? "product search failed");
+    }
+
+    return (json.data?.products ?? []).map((item) => ({
+      id: item.weburl,
+      slug: item.weburl,
       name: item.product_name,
       vendor: item.company,
-      description: item.category?.map((c) => c.name).join(", ") ?? "",
+      description:
+        item.overview?.trim() ||
+        item.category?.map((category) => category.name).join(", ") ||
+        "",
       logoUrl: item.logo_url ?? "",
     }));
   },

@@ -28,11 +28,13 @@ pnpm lint    # type-check only
 
 ## Environment variables
 
-Copy `.env.example` to `.env.local` and adjust as needed. The only variable is the backend API URL, which defaults to `http://127.0.0.1:4000` if not set.
+Copy `.env.example` to `.env.local` and adjust as needed. `.env.local` is ignored by git. The backend API URL still defaults to `http://127.0.0.1:4000` if not set.
 
-| Variable       | Default                 | Description                 |
-| -------------- | ----------------------- | --------------------------- |
-| `VITE_API_URL` | `http://127.0.0.1:4000` | Base URL of the backend API |
+| Variable              | Default                                                    | Description                             |
+| --------------------- | ---------------------------------------------------------- | --------------------------------------- |
+| `VITE_API_URL`        | `http://127.0.0.1:4000`                                    | Base URL of the backend API             |
+| `VITE_SEARCH_API_URL` | `https://peko-api-dev-42526110428.asia-southeast1.run.app` | Base URL of the external product search |
+| `VITE_SEARCH_API_KEY` | —                                                          | Partner API key sent in `X-API-Key`     |
 
 ## Pages
 
