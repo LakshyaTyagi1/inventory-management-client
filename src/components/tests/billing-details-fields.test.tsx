@@ -21,6 +21,7 @@ describe("BillingDetailsFields", () => {
           amount: "18",
           currency: "USD",
           entity: "user",
+          ratePeriod: "month",
         }}
         onPricingDetailsChange={vi.fn()}
         minimumUnits="1"
@@ -60,6 +61,7 @@ describe("BillingDetailsFields", () => {
           amount: "18",
           currency: "USD",
           entity: "user",
+          ratePeriod: "month",
         }}
         onPricingDetailsChange={vi.fn()}
         minimumUnits="1"
