@@ -186,17 +186,19 @@ export function BillingDetailsFields({
             />
           </div>
           <FieldDescription>
-            Leave Unlimited selected for no upper limit, or enter a hard cap.
+            Leave Unlimited selected for no upper limit, or enter a hard cap to
+            enable stock tracking.
           </FieldDescription>
         </Field>
       </div>
 
       <Field>
-        <FieldLabel>Activation timeline</FieldLabel>
+        <FieldLabel>Activation timeline (Number of days)</FieldLabel>
         <Input
+          type="number"
           value={activationTimeline}
           onChange={(event) => onActivationTimelineChange(event.target.value)}
-          placeholder="e.g. 7 Working Days"
+          placeholder="e.g. 7"
           disabled={disabled}
         />
         <FieldDescription>

@@ -7,6 +7,7 @@ export function SetupReviewPanel({
   planName,
   selectedRegions,
   activeRegion,
+  stockTrackingEnabled,
   pricingOptions,
   existingSku,
   generatedSkuCode,
@@ -16,6 +17,7 @@ export function SetupReviewPanel({
   planName: string;
   selectedRegions: string[];
   activeRegion?: string;
+  stockTrackingEnabled?: boolean;
   pricingOptions: PricePerUnit[];
   existingSku?: Sku;
   generatedSkuCode: string;
@@ -59,6 +61,17 @@ export function SetupReviewPanel({
           )}
           {existingSku && <Badge variant="secondary">existing setup</Badge>}
         </div>
+
+        {activeRegion && stockTrackingEnabled === false ? (
+          <div className="rounded-lg border border-dashed px-4 py-3 text-sm text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="outline">stock disabled</Badge>
+              <span>
+                {activeRegion} is set to Unlimited, so starting stock is skipped.
+              </span>
+            </div>
+          </div>
+        ) : null}
 
         <div className="rounded-lg border bg-background px-4 py-3">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">

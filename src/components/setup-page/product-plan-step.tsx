@@ -1,4 +1,4 @@
-import { LoaderCircleIcon, SearchIcon } from "lucide-react";
+import { CheckIcon, LoaderCircleIcon, SearchIcon } from "lucide-react";
 
 import type { ProductPricingPlan, ProductSearchResult } from "@/lib/api";
 import { formatPriceLine } from "@/lib/catalog";
@@ -189,18 +189,18 @@ export function ProductPlanStep({
                         <span
                           aria-hidden="true"
                           className={[
-                            "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border transition-colors",
+                            "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-[6px] border transition-colors",
                             checked
-                              ? "border-foreground bg-foreground"
+                              ? "border-[#0A6C31] bg-[#0A6C31]"
                               : "border-muted-foreground/40",
                           ].join(" ")}
                         >
-                          <span
-                            className={[
-                              "size-2 rounded-full",
-                              checked ? "bg-background" : "bg-transparent",
-                            ].join(" ")}
-                          />
+                          {checked && (
+                            <CheckIcon
+                              strokeWidth={3}
+                              className="size-3.5 text-white"
+                            />
+                          )}
                         </span>
                       </div>
                     </label>

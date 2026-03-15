@@ -294,20 +294,25 @@ export function useSetupPage({
     [skuCatalog, snapshot.inventoryPools],
   );
 
-  const updateActiveRegionDraft = useCallback(
-    (updater: (draft: RegionDraft) => RegionDraft) => {
-      if (!activeRegion) return;
-
+  const updateRegionDraft = useCallback(
+    (region: Region, updater: (draft: RegionDraft) => RegionDraft) => {
       const pricingSeed = pricingSeedFromPlanName(pricingPlans, planName);
 
       setRegionDrafts((current) => ({
         ...current,
-        [activeRegion]: updater(
-          current[activeRegion] ?? createRegionDraft(pricingSeed),
-        ),
+        [region]: updater(current[region] ?? createRegionDraft(pricingSeed)),
       }));
     },
-    [activeRegion, planName, pricingPlans],
+    [planName, pricingPlans],
+  );
+
+  const updateActiveRegionDraft = useCallback(
+    (updater: (draft: RegionDraft) => RegionDraft) => {
+      if (!activeRegion) return;
+
+      updateRegionDraft(activeRegion, updater);
+    },
+    [activeRegion, updateRegionDraft],
   );
 
   const updatePricingDetails = useCallback(
@@ -364,23 +369,23 @@ export function useSetupPage({
   );
 
   const updateInventoryQuantity = useCallback(
-    (value: number) => {
-      updateActiveRegionDraft((draft) => ({
+    (region: Region, value: number) => {
+      updateRegionDraft(region, (draft) => ({
         ...draft,
         inventoryQuantity: value,
       }));
     },
-    [updateActiveRegionDraft],
+    [updateRegionDraft],
   );
 
   const updateInventoryActor = useCallback(
-    (value: string) => {
-      updateActiveRegionDraft((draft) => ({
+    (region: Region, value: string) => {
+      updateRegionDraft(region, (draft) => ({
         ...draft,
         inventoryActor: value,
       }));
     },
-    [updateActiveRegionDraft],
+    [updateRegionDraft],
   );
 
   const resetForm = useCallback(() => {
@@ -456,13 +461,15 @@ export function useSetupPage({
       onActivationTimelineChange: updateActivationTimeline,
     },
     stockStep: {
-      detailsReady:
-        derived.productPlanReady && Boolean(derived.activeRegionEntry),
-      existingInventoryPool: derived.activeRegionEntry?.existingInventoryPool,
-      inventoryQuantity: derived.activeDraft.inventoryQuantity,
+      detailsReady: derived.productPlanReady && selectedRegions.length > 0,
+      entries: derived.regionEntries.map((entry) => ({
+        region: entry.region,
+        stockTrackingEnabled: entry.stockTrackingEnabled,
+        existingInventoryPool: entry.existingInventoryPool,
+        inventoryQuantity: entry.draft.inventoryQuantity,
+        inventoryActor: entry.draft.inventoryActor,
+      })),
       onInventoryQuantityChange: updateInventoryQuantity,
-      inventoryRegion: derived.activeRegionEntry?.region ?? "Choose region",
-      inventoryActor: derived.activeDraft.inventoryActor,
       onInventoryActorChange: updateInventoryActor,
     },
     reviewPanel: {
@@ -470,6 +477,7 @@ export function useSetupPage({
       planName: derived.normalizedPlanName,
       selectedRegions,
       activeRegion: derived.activeRegionEntry?.region,
+      stockTrackingEnabled: derived.activeRegionEntry?.stockTrackingEnabled,
       pricingOptions: derived.reviewPricingOptions,
       existingSku: derived.activeRegionEntry?.existingSku,
       generatedSkuCode: derived.activeRegionEntry?.generatedSkuCode ?? "",

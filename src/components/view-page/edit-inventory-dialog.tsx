@@ -23,6 +23,7 @@ export function EditInventoryDialog({
   region,
   actor,
   onActorChange,
+  stockTrackingEnabled,
   canSave,
   loading,
   onSave,
@@ -36,6 +37,7 @@ export function EditInventoryDialog({
   region: string;
   actor: string;
   onActorChange: (value: string) => void;
+  stockTrackingEnabled: boolean;
   canSave: boolean;
   loading: boolean;
   onSave: () => void;
@@ -45,43 +47,60 @@ export function EditInventoryDialog({
       {entry && (
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>{pool ? "Edit inventory" : "Track stock"}</DialogTitle>
+            <DialogTitle>
+              {stockTrackingEnabled
+                ? pool
+                  ? "Edit inventory"
+                  : "Track stock"
+                : "Stock tracking unavailable"}
+            </DialogTitle>
             <DialogDescription>
-              {pool
-                ? `Adjust the tracked stock for ${entry.product.name} · ${entry.plan.name}.`
-                : `Start tracking stock for ${entry.product.name} · ${entry.plan.name}.`}
+              {stockTrackingEnabled
+                ? pool
+                  ? `Adjust the tracked stock for ${entry.product.name} · ${entry.plan.name}.`
+                  : `Start tracking stock for ${entry.product.name} · ${entry.plan.name}.`
+                : `Maximum units is set to Unlimited for ${entry.product.name} · ${entry.plan.name}. Add a hard cap in billing before editing stock.`}
             </DialogDescription>
           </DialogHeader>
 
-          <InventoryStockFields
-            quantityLabel={pool ? "Stock total" : "Starting stock"}
-            quantityDescription={
-              pool
-                ? "Enter the total stock you want on hand. We will add or remove the difference automatically."
-                : "Enter the stock you want to start tracking for this regional offer."
-            }
-            quantity={quantity}
-            onQuantityChange={onQuantityChange}
-            region={region}
-            regionDescription="Stock is attached directly to the regional offer."
-            actor={pool ? actor : undefined}
-            onActorChange={pool ? onActorChange : undefined}
-            actorDescription="Used only when the stock total changes."
-            existingInventory={
-              pool
-                ? {
-                    totalQuantity: pool.totalQuantity,
-                  }
-                : undefined
-            }
-            disabled={loading}
-          />
+          {stockTrackingEnabled ? (
+            <InventoryStockFields
+              quantityLabel={pool ? "Stock total" : "Starting stock"}
+              quantityDescription={
+                pool
+                  ? "Enter the total stock you want on hand. We will add or remove the difference automatically."
+                  : "Enter the stock you want to start tracking for this regional offer."
+              }
+              quantity={quantity}
+              onQuantityChange={onQuantityChange}
+              region={region}
+              regionDescription="Stock is attached directly to the regional offer."
+              actor={pool ? actor : undefined}
+              onActorChange={pool ? onActorChange : undefined}
+              actorDescription="Used only when the stock total changes."
+              existingInventory={
+                pool
+                  ? {
+                      totalQuantity: pool.totalQuantity,
+                    }
+                  : undefined
+              }
+              disabled={loading}
+            />
+          ) : (
+            <p className="rounded-lg border border-dashed px-4 py-3 text-sm text-muted-foreground">
+              This offer is Unlimited, so stock is not tracked. Save a maximum
+              units cap in billing first if you need inventory for this region.
+            </p>
+          )}
 
           <DialogFooter showCloseButton>
-            <Button disabled={!canSave || loading} onClick={onSave}>
-              <BoxesIcon data-icon="inline-start" />
-              {pool ? "Save inventory" : "Track stock"}
-            </Button>
+            {stockTrackingEnabled ? (
+              <Button disabled={!canSave || loading} onClick={onSave}>
+                <BoxesIcon data-icon="inline-start" />
+                {pool ? "Save inventory" : "Track stock"}
+              </Button>
+            ) : null}
           </DialogFooter>
         </DialogContent>
       )}

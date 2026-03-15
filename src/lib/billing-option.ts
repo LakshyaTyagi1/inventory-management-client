@@ -308,6 +308,12 @@ export function buildPurchaseConstraints(input: {
   };
 }
 
+export function isStockTrackingEnabled(
+  purchaseConstraints?: PurchaseConstraints,
+) {
+  return purchaseConstraints?.maxUnits !== undefined;
+}
+
 export function purchaseConstraintsToFormValues(
   purchaseConstraints?: PurchaseConstraints,
 ) {

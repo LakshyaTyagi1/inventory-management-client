@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { BoxesIcon, PencilRulerIcon } from "lucide-react";
 
+import { isStockTrackingEnabled } from "@/lib/billing-option";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -78,7 +79,12 @@ export function InventoryPoolsCard({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.map((entry) => (
+              {rows.map((entry) => {
+                const stockTrackingEnabled = entry.sku
+                  ? isStockTrackingEnabled(entry.sku.purchaseConstraints)
+                  : true;
+
+                return (
                 <TableRow key={entry.pool._id}>
                   <TableCell className="whitespace-normal">
                     <div className="flex flex-col">
@@ -108,23 +114,30 @@ export function InventoryPoolsCard({
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        onEditInventory({
-                          skuId: entry.pool.skuId,
-                          poolId: entry.pool._id,
-                        })
-                      }
-                      aria-label={`Edit inventory for ${entry.product?.name ?? entry.pool.skuId} ${entry.sku?.region ?? "offer"}`}
-                    >
-                      <PencilRulerIcon data-icon="inline-start" />
-                      Edit
-                    </Button>
+                    {stockTrackingEnabled ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          onEditInventory({
+                            skuId: entry.pool.skuId,
+                            poolId: entry.pool._id,
+                          })
+                        }
+                        aria-label={`Edit inventory for ${entry.product?.name ?? entry.pool.skuId} ${entry.sku?.region ?? "offer"}`}
+                      >
+                        <PencilRulerIcon data-icon="inline-start" />
+                        Edit
+                      </Button>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">
+                        Disabled for Unlimited
+                      </span>
+                    )}
                   </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
             </TableBody>
           </Table>
         )}

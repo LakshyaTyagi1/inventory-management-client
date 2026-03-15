@@ -16,6 +16,7 @@ import {
   createEmptyPricingDetails,
   ensureUniqueSkuCode,
   hasValidPurchaseConstraints,
+  isStockTrackingEnabled,
   normalizePricingOptions,
   normalizeRegion,
   pricingDetailsFromPricingOptions,
@@ -201,10 +202,14 @@ export function ViewWorkspace({
         activationTimeline.trim());
 
   const activeInventoryRegion = activeInventoryEntry?.sku.region ?? "";
+  const inventoryTrackingEnabled = activeInventoryEntry
+    ? isStockTrackingEnabled(activeInventoryEntry.sku.purchaseConstraints)
+    : true;
   const inventoryChanged =
-    activeInventoryPool?.totalQuantity !== undefined
+    inventoryTrackingEnabled &&
+    (activeInventoryPool?.totalQuantity !== undefined
       ? inventoryQuantity !== activeInventoryPool.totalQuantity
-      : inventoryQuantity > 0;
+      : inventoryQuantity > 0);
 
   const updateBillingPricingOption = (
     field: keyof PricingDetails,
@@ -285,10 +290,11 @@ export function ViewWorkspace({
         region={activeInventoryRegion}
         actor={inventoryActor}
         onActorChange={setInventoryActor}
+        stockTrackingEnabled={inventoryTrackingEnabled}
         canSave={inventoryChanged}
         loading={loading}
         onSave={() => {
-          if (!activeInventoryEntry) return;
+          if (!activeInventoryEntry || !inventoryTrackingEnabled) return;
 
           const work = activeInventoryPool
             ? () =>

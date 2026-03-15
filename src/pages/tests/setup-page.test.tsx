@@ -77,10 +77,14 @@ const catalogResponse = {
   },
 };
 
-function getStockQuantityInput() {
-  const spinbuttons = screen.getAllByRole("spinbutton");
+function getStockSection(region: string) {
+  return screen.getByRole("region", {
+    name: new RegExp(`^${region} stock$`, "i"),
+  });
+}
 
-  return spinbuttons[spinbuttons.length - 1]!;
+function getStockQuantityInput(region: string) {
+  return within(getStockSection(region)).getByRole("spinbutton");
 }
 
 async function searchAndSelectProduct() {
@@ -127,12 +131,8 @@ async function toggleRegion(optionLabel: string) {
 
 async function toggleBillingCycle(optionLabel: string) {
   await act(async () => {
-    fireEvent.click(screen.getByRole("button", { name: /billing cycles/i }));
-  });
-
-  await act(async () => {
     fireEvent.click(
-      screen.getByRole("option", {
+      screen.getByRole("button", {
         name: new RegExp(`^${optionLabel}$`, "i"),
       }),
     );
@@ -231,6 +231,10 @@ describe("setup page", () => {
     await searchAndSelectProduct();
     await toggleRegion("GCC");
 
+    expect(
+      screen.queryByRole("region", { name: /^gcc stock$/i }),
+    ).not.toBeInTheDocument();
+
     await waitFor(() => {
       expect(screen.getByPlaceholderText(/e\.g\. 12/i)).toHaveValue("18");
     });
@@ -241,15 +245,14 @@ describe("setup page", () => {
 
     await toggleBillingCycle("yearly");
 
-    const billingCycleTrigger = screen.getByRole("button", {
-      name: /billing cycles/i,
-    });
-    expect(
-      within(billingCycleTrigger).getByText(/^monthly$/i),
-    ).toBeInTheDocument();
-    expect(
-      within(billingCycleTrigger).getByText(/^yearly$/i),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^monthly$/i })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: /^yearly$/i })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
 
     await act(async () => {
       fireEvent.change(screen.getByPlaceholderText(/e\.g\. 12/i), {
@@ -261,7 +264,14 @@ describe("setup page", () => {
       fireEvent.change(screen.getByPlaceholderText(/e\.g\. 500/i), {
         target: { value: "20" },
       });
-      fireEvent.change(getStockQuantityInput(), {
+    });
+
+    await waitFor(() => {
+      expect(getStockQuantityInput("GCC")).toBeInTheDocument();
+    });
+
+    await act(async () => {
+      fireEvent.change(getStockQuantityInput("GCC"), {
         target: { value: "24" },
       });
     });
@@ -351,7 +361,17 @@ describe("setup page", () => {
     await toggleRegion("GCC");
 
     await act(async () => {
-      fireEvent.change(getStockQuantityInput(), {
+      fireEvent.change(screen.getByPlaceholderText(/e\.g\. 500/i), {
+        target: { value: "20" },
+      });
+    });
+
+    await waitFor(() => {
+      expect(getStockQuantityInput("GCC")).toBeInTheDocument();
+    });
+
+    await act(async () => {
+      fireEvent.change(getStockQuantityInput("GCC"), {
         target: { value: "10" },
       });
     });
@@ -374,7 +394,17 @@ describe("setup page", () => {
     await selectComboboxOption(0, "INR");
 
     await act(async () => {
-      fireEvent.change(getStockQuantityInput(), {
+      fireEvent.change(screen.getByPlaceholderText(/e\.g\. 500/i), {
+        target: { value: "25" },
+      });
+    });
+
+    await waitFor(() => {
+      expect(getStockQuantityInput("INDIA")).toBeInTheDocument();
+    });
+
+    await act(async () => {
+      fireEvent.change(getStockQuantityInput("INDIA"), {
         target: { value: "5" },
       });
     });
@@ -417,7 +447,9 @@ describe("setup page", () => {
             ratePeriod: "month",
           },
         ],
-        purchaseConstraints: undefined,
+        purchaseConstraints: {
+          maxUnits: 25,
+        },
         activationTimeline: undefined,
       });
       expect(createInventoryPool).toHaveBeenNthCalledWith(1, {
@@ -499,7 +531,17 @@ describe("setup page", () => {
       fireEvent.change(screen.getByPlaceholderText(/e\.g\. 12/i), {
         target: { value: "45" },
       });
-      fireEvent.change(getStockQuantityInput(), {
+      fireEvent.change(screen.getByPlaceholderText(/e\.g\. 500/i), {
+        target: { value: "12" },
+      });
+    });
+
+    await waitFor(() => {
+      expect(getStockQuantityInput("INDIA")).toBeInTheDocument();
+    });
+
+    await act(async () => {
+      fireEvent.change(getStockQuantityInput("INDIA"), {
         target: { value: "8" },
       });
     });
@@ -530,7 +572,9 @@ describe("setup page", () => {
             ratePeriod: undefined,
           },
         ],
-        purchaseConstraints: undefined,
+        purchaseConstraints: {
+          maxUnits: 12,
+        },
         activationTimeline: undefined,
       });
       expect(createInventoryPool).toHaveBeenCalledWith({
@@ -584,6 +628,7 @@ describe("setup page", () => {
               pricingOptions: [pricingOption("monthly", "18")],
               purchaseConstraints: {
                 minUnits: 1,
+                maxUnits: 15,
               },
               activationTimeline: "5 Days",
               createdAt: "2026-03-12T00:00:00.000Z",
@@ -609,11 +654,11 @@ describe("setup page", () => {
 
     await waitFor(() => {
       expect(screen.getByDisplayValue("jira-standard-gcc")).toBeInTheDocument();
-      expect(getStockQuantityInput()).toHaveValue(12);
+      expect(getStockQuantityInput("GCC")).toHaveValue(12);
     });
 
     await act(async () => {
-      fireEvent.change(getStockQuantityInput(), {
+      fireEvent.change(getStockQuantityInput("GCC"), {
         target: { value: "18" },
       });
     });
@@ -630,5 +675,38 @@ describe("setup page", () => {
         actor: "operations",
       });
     });
+  });
+
+  it("hides starting stock when the selected region is unlimited", async () => {
+    vi.spyOn(api, "getProductPricing").mockResolvedValue([
+      {
+        plan: "Standard",
+        amount: "18",
+        currency: "USD",
+        entity: "user",
+        period: "month",
+      },
+    ]);
+    const runAction: ActionRunner = async () => true;
+
+    render(
+      <SetupPage
+        snapshot={emptySnapshot}
+        loading={false}
+        runAction={runAction}
+      />,
+    );
+
+    await searchAndSelectProduct();
+    await toggleRegion("GCC");
+
+    expect(
+      screen.queryByRole("region", { name: /^gcc stock$/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /starting stock is only available for regions with a maximum unit cap/i,
+      ),
+    ).toBeInTheDocument();
   });
 });

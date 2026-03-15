@@ -87,6 +87,7 @@ describe("setup page model", () => {
         entity: "user",
         ratePeriod: "monthly",
       },
+      maximumUnits: "20",
       inventoryQuantity: 18,
     };
     const indiaDraft = {
@@ -97,6 +98,7 @@ describe("setup page model", () => {
         entity: "user",
         ratePeriod: "month",
       },
+      maximumUnits: "10",
       inventoryQuantity: 5,
     };
 
@@ -140,6 +142,39 @@ describe("setup page model", () => {
     );
     expect(derived.summary.saveMessage).toBe(
       "Saving will create 1 new regional offer, update 1 existing regional offer, start tracking stock in 1 region, and adjust stock in 1 region.",
+    );
+  });
+
+  it("ignores stock changes when maximum units stays unlimited", () => {
+    const derived = buildSetupPageDerivedState({
+      snapshot,
+      skuCatalog: buildSkuCatalogLookup(snapshot),
+      selectedProduct,
+      pricingPlans: [],
+      planName: "Standard",
+      selectedRegions: ["INDIA"],
+      activeRegion: "INDIA",
+      regionDrafts: {
+        INDIA: {
+          ...createRegionDraft(pricingOption("monthly", "1400", "INR")),
+          pricingDetails: {
+            amount: "1400",
+            currency: "INR",
+            entity: "user",
+            ratePeriod: "month",
+          },
+          inventoryQuantity: 7,
+        },
+      },
+      loadingPricing: false,
+      loading: false,
+    });
+
+    expect(derived.regionEntries[0]?.stockTrackingEnabled).toBe(false);
+    expect(derived.regionEntries[0]?.inventoryActionNeeded).toBe(false);
+    expect(derived.summary.startTrackingCount).toBe(0);
+    expect(derived.summary.saveMessage).toBe(
+      "Saving will create 1 new regional offer.",
     );
   });
 

@@ -105,6 +105,7 @@ const snapshot: DashboardSnapshot = {
       pricingOptions: [pricingOption("monthly", "18")],
       purchaseConstraints: {
         minUnits: 1,
+        maxUnits: 20,
       },
       activationTimeline: "5 Days",
       createdAt: "2026-03-12T00:00:00.000Z",
@@ -133,6 +134,9 @@ const snapshot: DashboardSnapshot = {
         pricingOption("monthly", "350"),
         pricingOption("yearly", "320"),
       ],
+      purchaseConstraints: {
+        maxUnits: 300,
+      },
       activationTimeline: "7 Working Days",
       createdAt: "2026-03-10T00:00:00.000Z",
     },
@@ -143,6 +147,9 @@ const snapshot: DashboardSnapshot = {
       region: "INDIA",
       seatType: "seat",
       pricingOptions: [pricingOption("monthly", "14")],
+      purchaseConstraints: {
+        maxUnits: 100,
+      },
       createdAt: "2026-03-09T00:00:00.000Z",
     },
   ],
@@ -180,15 +187,18 @@ const runAction: ActionRunner = async (work) => {
   return true;
 };
 
-function renderViewRoute(initialEntry = "/view") {
-  render(
+function renderViewRoute(
+  initialEntry = "/view",
+  snapshotValue: DashboardSnapshot = snapshot,
+) {
+  return render(
     <MemoryRouter initialEntries={[initialEntry]}>
       <Routes>
         <Route
           path="/view"
           element={
             <ViewWorkspace
-              snapshot={snapshot}
+              snapshot={snapshotValue}
               loading={false}
               runAction={runAction}
             />
@@ -355,6 +365,45 @@ describe("view page", () => {
         actor: "operations",
       });
     });
+  });
+
+  it("shows stock disabled hints for unlimited offers across view pages", () => {
+    const unlimitedSnapshot: DashboardSnapshot = {
+      ...snapshot,
+      products: [snapshot.products[0]!],
+      plans: [snapshot.plans[0]!],
+      skus: [
+        {
+          ...snapshot.skus[0]!,
+          purchaseConstraints: {
+            minUnits: 1,
+          },
+        },
+      ],
+      inventoryPools: [snapshot.inventoryPools[0]!],
+    };
+
+    const billingView = renderViewRoute("/view/billing-options", unlimitedSnapshot);
+
+    expect(
+      screen.getByText(
+        /stock is disabled while maximum units is set to unlimited/i,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", {
+        name: /edit inventory for jira standard/i,
+      }),
+    ).not.toBeInTheDocument();
+
+    billingView.unmount();
+
+    renderViewRoute("/view/inventory-pools", unlimitedSnapshot);
+
+    expect(screen.getAllByText(/disabled for unlimited/i).length).toBeGreaterThan(0);
+    expect(
+      screen.queryByRole("button", { name: /edit inventory for jira gcc/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("searches all regional offers on the dedicated billing page", async () => {

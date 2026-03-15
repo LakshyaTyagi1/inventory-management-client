@@ -7,6 +7,7 @@ import {
   formatPurchaseConstraints,
   formatSkuLabel,
 } from "@/lib/catalog";
+import { isStockTrackingEnabled } from "@/lib/billing-option";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -22,6 +23,9 @@ export function BillingOptionTile({
   onEditInventory: (input: { skuId: string; poolId?: string }) => void;
 }) {
   const pricingOptions = entry.sku.pricingOptions ?? [];
+  const stockTrackingEnabled = isStockTrackingEnabled(
+    entry.sku.purchaseConstraints,
+  );
 
   return (
     <div className="rounded-xl border p-4">
@@ -68,7 +72,9 @@ export function BillingOptionTile({
             Stock tracking
           </p>
           <p className="mt-1 text-sm font-medium">
-            {entry.pools.length > 0
+            {!stockTrackingEnabled
+              ? "Disabled for Unlimited"
+              : entry.pools.length > 0
               ? `${entry.trackedQuantity} tracked`
               : "Not tracked yet"}
           </p>
@@ -85,6 +91,13 @@ export function BillingOptionTile({
         </div>
       </div>
 
+      {!stockTrackingEnabled ? (
+        <p className="mt-3 text-xs text-muted-foreground">
+          Stock is disabled while maximum units is set to Unlimited. Add a hard
+          cap in billing to enable inventory.
+        </p>
+      ) : null}
+
       <div className="mt-4 flex flex-wrap gap-2">
         <Button
           variant="outline"
@@ -95,7 +108,11 @@ export function BillingOptionTile({
           <PencilRulerIcon data-icon="inline-start" />
           Edit billing
         </Button>
-        {entry.pools.length <= 1 ? (
+        {!stockTrackingEnabled ? (
+          <p className="self-center text-xs text-muted-foreground">
+            Track stock after setting a maximum unit cap.
+          </p>
+        ) : entry.pools.length <= 1 ? (
           <Button
             variant="outline"
             size="sm"

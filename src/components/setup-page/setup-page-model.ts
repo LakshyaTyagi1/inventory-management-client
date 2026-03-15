@@ -7,6 +7,7 @@ import {
   createEmptyPricingDetails,
   ensureUniqueSkuCode,
   hasValidPurchaseConstraints,
+  isStockTrackingEnabled,
   normalizePricingOptions,
   pricePerUnitFromPlan,
   pricingDetailsFromPricingOptions,
@@ -55,6 +56,7 @@ export type RegionEntry = {
   offerChanged: boolean;
   offerActionNeeded: boolean;
   offerBlocked: boolean;
+  stockTrackingEnabled: boolean;
   inventoryWillCreate: boolean;
   inventoryWillAdjust: boolean;
   inventoryDelta: number;
@@ -248,6 +250,7 @@ export function buildRegionEntries(input: {
       minUnits: draft.minimumUnits,
       maxUnits: draft.maximumUnits,
     });
+    const stockTrackingEnabled = isStockTrackingEnabled(purchaseConstraints);
     const normalizedActivationTimeline =
       draft.activationTimeline.trim() || undefined;
     const baseCode = buildSkuCode({
@@ -291,12 +294,17 @@ export function buildRegionEntries(input: {
       : !offerReady;
     const existingInventoryTotal = existingInventoryPool?.totalQuantity ?? 0;
     const inventoryWillCreate =
-      draft.inventoryQuantity > 0 && !existingInventoryPool;
+      stockTrackingEnabled &&
+      draft.inventoryQuantity > 0 &&
+      !existingInventoryPool;
     const inventoryWillAdjust =
+      stockTrackingEnabled &&
       existingInventoryPool !== undefined &&
       draft.inventoryQuantity !== existingInventoryTotal;
     const inventoryDelta = existingInventoryPool
-      ? draft.inventoryQuantity - existingInventoryTotal
+      ? stockTrackingEnabled
+        ? draft.inventoryQuantity - existingInventoryTotal
+        : 0
       : 0;
 
     return {
@@ -313,6 +321,7 @@ export function buildRegionEntries(input: {
       offerChanged,
       offerActionNeeded,
       offerBlocked,
+      stockTrackingEnabled,
       inventoryWillCreate,
       inventoryWillAdjust,
       inventoryDelta,

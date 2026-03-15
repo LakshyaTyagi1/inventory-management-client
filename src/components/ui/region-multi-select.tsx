@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { CheckIcon } from "lucide-react";
 
 import {
   commonRegionOptions,
@@ -50,16 +51,17 @@ export function RegionMultiSelect({
             <span
               aria-hidden="true"
               className={cn(
-                "flex size-4 shrink-0 items-center justify-center rounded-full border transition-colors",
+                "flex size-5 shrink-0 items-center justify-center rounded-[6px] border transition-colors",
                 selected
-                  ? "border-secondary-foreground/40 bg-secondary-foreground/10"
-                  : "border-muted-foreground/35",
+                  ? "border-[#0A6C31] bg-[#0A6C31]"
+                  : "border-muted-foreground/40",
               )}
             >
-              <span
+              <CheckIcon
+                strokeWidth={3}
                 className={cn(
-                  "size-2 rounded-full",
-                  selected ? "bg-secondary-foreground" : "bg-transparent",
+                  "size-3.5 text-white",
+                  selected ? "opacity-100" : "opacity-0",
                 )}
               />
             </span>

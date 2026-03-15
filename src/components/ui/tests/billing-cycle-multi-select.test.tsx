@@ -1,5 +1,5 @@
 import { act, useState } from "react";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import type { BillingCycle } from "@/types";
@@ -38,44 +38,60 @@ describe("BillingCycleMultiSelect", () => {
     );
 
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: /billing cycles/i }));
-    });
-
-    await act(async () => {
-      fireEvent.click(screen.getByRole("option", { name: /^yearly$/i }));
+      fireEvent.click(screen.getByRole("button", { name: /^yearly$/i }));
     });
 
     expect(onChange).toHaveBeenLastCalledWith(["monthly", "yearly"]);
 
-    const trigger = screen.getByRole("button", { name: /billing cycles/i });
-    expect(within(trigger).getByText(/^monthly$/i)).toBeInTheDocument();
-    expect(within(trigger).getByText(/^yearly$/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^monthly$/i })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: /^yearly$/i })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
   });
 
   it("keeps one time exclusive and allows switching back", async () => {
     render(
-      <ControlledBillingCycleMultiSelect initialValue={["monthly", "yearly"]} />,
+      <ControlledBillingCycleMultiSelect
+        initialValue={["monthly", "yearly"]}
+      />,
     );
 
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: /billing cycles/i }));
+      fireEvent.click(screen.getByRole("button", { name: /^one time$/i }));
     });
+
+    expect(screen.getByRole("button", { name: /^one time$/i })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: /^monthly$/i })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+    expect(screen.getByRole("button", { name: /^yearly$/i })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
 
     await act(async () => {
-      fireEvent.click(screen.getByRole("option", { name: /^one time$/i }));
+      fireEvent.click(screen.getByRole("button", { name: /^monthly$/i }));
     });
 
-    const trigger = screen.getByRole("button", { name: /billing cycles/i });
-    expect(within(trigger).getByText(/^one time$/i)).toBeInTheDocument();
-    expect(within(trigger).queryByText(/^monthly$/i)).not.toBeInTheDocument();
-    expect(within(trigger).queryByText(/^yearly$/i)).not.toBeInTheDocument();
-
-    await act(async () => {
-      fireEvent.click(screen.getByRole("option", { name: /^monthly$/i }));
-    });
-
-    expect(within(trigger).getByText(/^monthly$/i)).toBeInTheDocument();
-    expect(within(trigger).queryByText(/^one time$/i)).not.toBeInTheDocument();
-    expect(within(trigger).queryByText(/^yearly$/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^monthly$/i })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: /^one time$/i })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+    expect(screen.getByRole("button", { name: /^yearly$/i })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
   });
 });
