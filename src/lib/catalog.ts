@@ -117,17 +117,22 @@ export function formatPurchaseConstraints(
   const minUnits = sku.purchaseConstraints?.minUnits;
   const maxUnits = sku.purchaseConstraints?.maxUnits;
 
-  if (minUnits === undefined && maxUnits === undefined) {
-    return "No purchase limits";
+  if (maxUnits === undefined) {
+    return "Unlimited";
   }
 
   if (minUnits !== undefined && maxUnits !== undefined) {
     return `Minimum ${minUnits} · Maximum ${maxUnits}`;
   }
 
-  if (minUnits !== undefined) {
-    return `Minimum ${minUnits} · Maximum Unlimited`;
-  }
-
   return `Maximum ${maxUnits}`;
+}
+
+export function formatActivationTimelineValue(value?: string) {
+  const normalizedValue = value?.trim();
+
+  if (!normalizedValue) return undefined;
+
+  const firstNumber = normalizedValue.match(/\d+/)?.[0];
+  return firstNumber ?? normalizedValue;
 }

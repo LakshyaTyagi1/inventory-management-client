@@ -85,57 +85,57 @@ export function InventoryPoolsCard({
                   : true;
 
                 return (
-                <TableRow key={entry.pool._id}>
-                  <TableCell className="whitespace-normal">
-                    <div className="flex flex-col">
-                      <span className="font-medium">
-                        {entry.product?.name ?? entry.pool.skuId}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {[entry.plan?.name, entry.sku?.code]
-                          .filter(Boolean)
-                          .join(" · ")}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>{entry.sku?.region ?? "-"}</TableCell>
-                  <TableCell>{entry.pool.totalQuantity}</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        entry.available <= 0
-                          ? "destructive"
-                          : entry.available <= 2
-                            ? "secondary"
-                            : "outline"
-                      }
-                    >
-                      {entry.available}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {stockTrackingEnabled ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          onEditInventory({
-                            skuId: entry.pool.skuId,
-                            poolId: entry.pool._id,
-                          })
+                  <TableRow key={entry.pool._id}>
+                    <TableCell className="whitespace-normal">
+                      <div className="flex flex-col">
+                        <span className="font-medium">
+                          {entry.product?.name ?? entry.pool.skuId}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {[entry.plan?.name, entry.sku?.code]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell>{entry.sku?.region ?? "-"}</TableCell>
+                    <TableCell>{entry.pool.totalQuantity}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          entry.available <= 0
+                            ? "destructive"
+                            : entry.available <= 2
+                              ? "secondary"
+                              : "outline"
                         }
-                        aria-label={`Edit inventory for ${entry.product?.name ?? entry.pool.skuId} ${entry.sku?.region ?? "offer"}`}
                       >
-                        <PencilRulerIcon data-icon="inline-start" />
-                        Edit
-                      </Button>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">
-                        Disabled for Unlimited
-                      </span>
-                    )}
-                  </TableCell>
-                </TableRow>
+                        {entry.available}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {stockTrackingEnabled ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            onEditInventory({
+                              skuId: entry.pool.skuId,
+                              poolId: entry.pool._id,
+                            })
+                          }
+                          aria-label={`Edit inventory for ${entry.product?.name ?? entry.pool.skuId} ${entry.sku?.region ?? "offer"}`}
+                        >
+                          <PencilRulerIcon data-icon="inline-start" />
+                          Edit
+                        </Button>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">
+                          Unlimited
+                        </span>
+                      )}
+                    </TableCell>
+                  </TableRow>
                 );
               })}
             </TableBody>

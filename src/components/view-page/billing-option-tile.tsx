@@ -1,6 +1,7 @@
 import { BoxesIcon, PencilRulerIcon } from "lucide-react";
 
 import {
+  formatActivationTimelineValue,
   formatBillingCycleLabel,
   formatBillingCycles,
   formatPriceLine,
@@ -25,6 +26,9 @@ export function BillingOptionTile({
   const pricingOptions = entry.sku.pricingOptions ?? [];
   const stockTrackingEnabled = isStockTrackingEnabled(
     entry.sku.purchaseConstraints,
+  );
+  const activationTimeline = formatActivationTimelineValue(
+    entry.sku.activationTimeline,
   );
 
   return (
@@ -61,9 +65,7 @@ export function BillingOptionTile({
           </p>
         ))}
         <p>{formatPurchaseConstraints(entry.sku)}</p>
-        {entry.sku.activationTimeline ? (
-          <p>{entry.sku.activationTimeline}</p>
-        ) : null}
+        {activationTimeline ? <p>{activationTimeline}</p> : null}
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -73,10 +75,10 @@ export function BillingOptionTile({
           </p>
           <p className="mt-1 text-sm font-medium">
             {!stockTrackingEnabled
-              ? "Disabled for Unlimited"
+              ? "Unlimited"
               : entry.pools.length > 0
-              ? `${entry.trackedQuantity} tracked`
-              : "Not tracked yet"}
+                ? `${entry.trackedQuantity} tracked`
+                : "Not tracked yet"}
           </p>
         </div>
         <div className="rounded-lg border px-3 py-3">
@@ -84,19 +86,14 @@ export function BillingOptionTile({
             Available now
           </p>
           <p className="mt-1 text-sm font-medium">
-            {entry.pools.length > 0
-              ? `${entry.availableQuantity} available`
-              : "No pool yet"}
+            {!stockTrackingEnabled
+              ? "Unlimited"
+              : entry.pools.length > 0
+                ? `${entry.availableQuantity} available`
+                : "No pool yet"}
           </p>
         </div>
       </div>
-
-      {!stockTrackingEnabled ? (
-        <p className="mt-3 text-xs text-muted-foreground">
-          Stock is disabled while maximum units is set to Unlimited. Add a hard
-          cap in billing to enable inventory.
-        </p>
-      ) : null}
 
       <div className="mt-4 flex flex-wrap gap-2">
         <Button
@@ -108,11 +105,7 @@ export function BillingOptionTile({
           <PencilRulerIcon data-icon="inline-start" />
           Edit billing
         </Button>
-        {!stockTrackingEnabled ? (
-          <p className="self-center text-xs text-muted-foreground">
-            Track stock after setting a maximum unit cap.
-          </p>
-        ) : entry.pools.length <= 1 ? (
+        {stockTrackingEnabled && entry.pools.length <= 1 ? (
           <Button
             variant="outline"
             size="sm"
@@ -127,11 +120,11 @@ export function BillingOptionTile({
             <BoxesIcon data-icon="inline-start" />
             {entry.pools.length > 0 ? "Edit inventory" : "Track stock"}
           </Button>
-        ) : (
+        ) : stockTrackingEnabled ? (
           <p className="self-center text-xs text-muted-foreground">
             Use the pool table below to edit each regional stock pool.
           </p>
-        )}
+        ) : null}
       </div>
     </div>
   );
