@@ -14,15 +14,31 @@ describe("app", () => {
     vi.restoreAllMocks();
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          products: [],
-          plans: [],
-          skus: [],
-          inventoryPools: [],
-          auditLogs: [],
-        }),
+      vi.fn().mockImplementation((input: string | Request | URL) => {
+        const url =
+          typeof input === "string"
+            ? input
+            : input instanceof URL
+              ? input.toString()
+              : input.url;
+
+        if (url.endsWith("/api/sales")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => [],
+          });
+        }
+
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            products: [],
+            plans: [],
+            skus: [],
+            inventoryPools: [],
+            auditLogs: [],
+          }),
+        });
       }),
     );
   });
@@ -59,5 +75,19 @@ describe("app", () => {
     expect(screen.getByText(/watch list/i)).toBeInTheDocument();
     expect(getSidebarLink("/view")).toHaveAttribute("data-active", "true");
     expect(getSidebarLink("/")).not.toHaveAttribute("data-active");
+  });
+
+  it("renders the sales page route", async () => {
+    window.history.pushState({}, "", "/sales");
+    render(<App />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: /sales records/i }),
+      ).toBeInTheDocument();
+    });
+
+    expect(screen.getByText(/browse sales/i)).toBeInTheDocument();
+    expect(getSidebarLink("/sales")).toHaveAttribute("data-active", "true");
   });
 });
