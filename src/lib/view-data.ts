@@ -6,6 +6,7 @@ import type {
   Sku,
 } from "@/types";
 import { buildSkuCatalogLookup } from "@/lib/catalog";
+import { isStockTrackingEnabled } from "@/lib/billing-option";
 import type {
   InventoryRowEntry,
   ViewSetupEntry,
@@ -23,11 +24,14 @@ export function buildViewSetupEntries(
       const pools = snapshot.inventoryPools.filter(
         (pool) => pool.skuId === sku._id,
       );
-      const trackedQuantity = pools.reduce(
+      const trackedPools = isStockTrackingEnabled(sku.purchaseConstraints)
+        ? pools
+        : [];
+      const trackedQuantity = trackedPools.reduce(
         (sum, pool) => sum + pool.totalQuantity,
         0,
       );
-      const availableQuantity = pools.reduce(
+      const availableQuantity = trackedPools.reduce(
         (sum, pool) => sum + pool.totalQuantity,
         0,
       );
@@ -36,10 +40,10 @@ export function buildViewSetupEntries(
         sku,
         plan: catalogEntry?.plan,
         product: catalogEntry?.product,
-        pools,
+        pools: trackedPools,
         trackedQuantity,
         availableQuantity,
-        hasLockedRegion: pools.length > 0,
+        hasLockedRegion: trackedPools.length > 0,
       };
     })
     .filter(
@@ -63,6 +67,11 @@ export function buildInventoryRows(
   const skuCatalog = buildSkuCatalogLookup(snapshot);
 
   return [...snapshot.inventoryPools]
+    .filter((pool) => {
+      const sku = skuCatalog.get(pool.skuId)?.sku;
+
+      return sku ? isStockTrackingEnabled(sku.purchaseConstraints) : true;
+    })
     .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
     .map((pool) => {
       const catalogEntry = skuCatalog.get(pool.skuId);
