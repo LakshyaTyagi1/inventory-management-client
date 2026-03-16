@@ -467,14 +467,18 @@ describe("view page", () => {
       unlimitedSnapshot,
     );
 
-    expect(screen.getAllByText(/^unlimited$/i).length).toBeGreaterThanOrEqual(
-      3,
-    );
-    expect(screen.queryByText(/5 days/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/^5$/i)).toBeInTheDocument();
     expect(
-      screen.queryByText(/track stock after setting a maximum unit cap/i),
-    ).not.toBeInTheDocument();
+      screen.getByText(/minimum units: 1 · maximum units: unlimited/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/activation timeline: 5 days/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/^minimum units$/i)).toBeInTheDocument();
+    expect(screen.getByText(/^maximum units$/i)).toBeInTheDocument();
+    expect(screen.getByText(/^1$/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/^unlimited$/i).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/^stock tracking$/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^available now$/i)).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", {
         name: /edit inventory for jira standard/i,
@@ -485,7 +489,12 @@ describe("view page", () => {
 
     renderViewRoute("/view/inventory-pools", unlimitedSnapshot);
 
-    expect(screen.getAllByText(/^unlimited$/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/^no tracked pools$/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /1 billing option currently uses unlimited inventory, so no tracked pool is needed/i,
+      ),
+    ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /edit inventory for jira gcc/i }),
     ).not.toBeInTheDocument();
