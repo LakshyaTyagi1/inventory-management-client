@@ -13,11 +13,12 @@ import {
   PackagePlusIcon,
   RefreshCwIcon,
   ShieldCheckIcon,
+  ShoppingCartIcon,
 } from "lucide-react";
 
 import { api } from "@/lib/api";
 import { buildInventoryRows } from "@/lib/view-data";
-import type { DashboardSnapshot } from "@/types";
+import type { DashboardSnapshot, SaleListEntry } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -54,6 +55,7 @@ import {
 import { SetupPage } from "@/pages/setup-page";
 import { BillingOptionsPage } from "@/pages/billing-options-page";
 import { InventoryPoolsPage } from "@/pages/inventory-pools-page";
+import { SalesPage } from "@/pages/sales-page";
 import { ViewPage } from "@/pages/view-page";
 import { AuditPage } from "@/pages/audit-page";
 import { ViewWorkspace } from "@/components/view-page/view-workspace";
@@ -65,6 +67,8 @@ const emptySnapshot: DashboardSnapshot = {
   inventoryPools: [],
   auditLogs: [],
 };
+
+const emptySales: SaleListEntry[] = [];
 
 export type ActionRunner = (
   work: () => Promise<unknown>,
@@ -83,6 +87,12 @@ const navigationItems = [
     label: "View",
     icon: BoxesIcon,
     subtitle: "everything created",
+  },
+  {
+    href: "/sales",
+    label: "Sales",
+    icon: ShoppingCartIcon,
+    subtitle: "partner records",
   },
   {
     href: "/audit",
@@ -137,6 +147,11 @@ const routeMeta: Record<string, RouteMeta> = {
     title: "Audit history",
     description: "Review the latest inventory-affecting events and actors.",
   },
+  "/sales": {
+    title: "Sales records",
+    description:
+      "Browse partner-reported sales, customer details, and payment metadata.",
+  },
 };
 
 function getRouteMeta(pathname: string): RouteMeta {
@@ -157,22 +172,28 @@ function isNavigationItemActive(pathname: string, href: string) {
 export function OperationsApp() {
   const location = useLocation();
   const [snapshot, setSnapshot] = useState<DashboardSnapshot>(emptySnapshot);
+  const [sales, setSales] = useState<SaleListEntry[]>(emptySales);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<{
     tone: "neutral" | "success" | "error";
     text: string;
   }>({
     tone: "neutral",
-    text: "Loading inventory data.",
+    text: "Loading workspace data.",
   });
 
-  const refresh = async (message = "Inventory data is up to date.") => {
+  const refresh = async (message = "Workspace data is up to date.") => {
     setLoading(true);
 
     try {
-      const nextSnapshot = await api.getDashboard();
+      const [nextSnapshot, nextSales] = await Promise.all([
+        api.getDashboard(),
+        api.getSales(),
+      ]);
+
       startTransition(() => {
         setSnapshot(nextSnapshot);
+        setSales(nextSales);
         setStatus({ tone: "success", text: message });
       });
     } catch (error) {
@@ -181,7 +202,7 @@ export function OperationsApp() {
         text:
           error instanceof Error
             ? error.message
-            : "Unable to load inventory data.",
+            : "Unable to load workspace data.",
       });
     } finally {
       setLoading(false);
@@ -324,7 +345,7 @@ export function OperationsApp() {
             <Badge variant="outline">{trackedPoolCount} pools tracked</Badge>
             <Button
               variant="outline"
-              onClick={() => void refresh("Inventory data refreshed.")}
+              onClick={() => void refresh("Workspace data refreshed.")}
             >
               <RefreshCwIcon data-icon="inline-start" />
               Refresh data
@@ -369,6 +390,10 @@ export function OperationsApp() {
               element={
                 <AuditPage auditLogs={snapshot.auditLogs} loading={loading} />
               }
+            />
+            <Route
+              path="/sales"
+              element={<SalesPage sales={sales} loading={loading} />}
             />
             <Route path="*" element={<NavigateToOverview />} />
           </Routes>
