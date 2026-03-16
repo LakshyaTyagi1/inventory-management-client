@@ -7,28 +7,21 @@ describe("api.searchProducts", () => {
     vi.unstubAllGlobals();
   });
 
-  it("maps products from the Peko search API", async () => {
-    vi.stubEnv("VITE_SEARCH_API_URL", "https://search.example");
-    vi.stubEnv("SEARCH_API_KEY", "test-api-key");
+  it("requests product search results from the backend proxy", async () => {
+    vi.stubEnv("VITE_API_URL", "https://api.example");
 
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({
-        success: true,
-        searchType: "fuzzy",
-        data: {
-          products: [
-            {
-              product_name: "IPIX CRM",
-              weburl: "ipix-crm",
-              company: "Example Corp",
-              logo_url: "https://storage.googleapis.com/logo.png",
-              overview: "CRM for small teams",
-              category: [{ name: "CRM Software", weburl: "crm-software" }],
-            },
-          ],
+      json: async () => [
+        {
+          id: "ipix-crm",
+          slug: "ipix-crm",
+          name: "IPIX CRM",
+          vendor: "Example Corp",
+          description: "CRM for small teams",
+          logoUrl: "https://storage.googleapis.com/logo.png",
         },
-      }),
+      ],
     });
 
     vi.stubGlobal("fetch", fetchMock);
@@ -38,11 +31,10 @@ describe("api.searchProducts", () => {
     const results = await api.searchProducts("CRM", 10);
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://search.example/api/v1/search/CRM?productLimit=10",
+      "https://api.example/api/catalog/search-products?query=CRM&limit=10",
       {
         headers: {
-          "X-API-Key": "test-api-key",
-          accept: "application/json",
+          "content-type": "application/json",
         },
       },
     );

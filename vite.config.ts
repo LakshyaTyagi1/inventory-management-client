@@ -5,7 +5,6 @@ import { fileURLToPath, URL } from "node:url";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  envPrefix: ["VITE_", "SEARCH_API_KEY"],
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
