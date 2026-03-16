@@ -9,7 +9,11 @@ import {
 
 import type { ProductPricingPlan, ProductSearchResult } from "@/lib/api";
 import { api } from "@/lib/api";
-import { orderRegions } from "@/lib/billing-option";
+import {
+  applyPricingDetailsChange,
+  orderRegions,
+  syncPricingDetailsByBillingCycles,
+} from "@/lib/billing-option";
 import { buildSkuCatalogLookup } from "@/lib/catalog";
 import type { ActionRunner } from "@/components/operations-app";
 import type {
@@ -193,7 +197,11 @@ export function useSetupPage({
           next[region] = {
             ...currentDraft,
             billingCycles: [...seedDraft.billingCycles],
-            pricingDetails: { ...seedDraft.pricingDetails },
+            pricingDetailsByCycle: {
+              monthly: { ...seedDraft.pricingDetailsByCycle.monthly },
+              yearly: { ...seedDraft.pricingDetailsByCycle.yearly },
+              one_time: { ...seedDraft.pricingDetailsByCycle.one_time },
+            },
           };
         }
 
@@ -316,13 +324,20 @@ export function useSetupPage({
   );
 
   const updatePricingDetails = useCallback(
-    (field: keyof PricingDetails, value: string) => {
+    (
+      billingCycle: BillingCycle,
+      field: keyof PricingDetails,
+      value: string,
+    ) => {
       updateActiveRegionDraft((draft) => ({
         ...draft,
-        pricingDetails: {
-          ...draft.pricingDetails,
-          [field]: value,
-        },
+        pricingDetailsByCycle: applyPricingDetailsChange({
+          billingCycles: draft.billingCycles,
+          pricingDetailsByCycle: draft.pricingDetailsByCycle,
+          billingCycle,
+          field,
+          value,
+        }),
       }));
     },
     [updateActiveRegionDraft],
@@ -333,6 +348,10 @@ export function useSetupPage({
       updateActiveRegionDraft((draft) => ({
         ...draft,
         billingCycles: value,
+        pricingDetailsByCycle: syncPricingDetailsByBillingCycles({
+          billingCycles: value,
+          pricingDetailsByCycle: draft.pricingDetailsByCycle,
+        }),
       }));
     },
     [updateActiveRegionDraft],
@@ -451,7 +470,7 @@ export function useSetupPage({
       generatedSkuCode: derived.activeRegionEntry?.generatedSkuCode ?? "",
       billingCycles: derived.activeDraft.billingCycles,
       onBillingCyclesChange: updateBillingCycles,
-      pricingDetails: derived.activeDraft.pricingDetails,
+      pricingDetailsByCycle: derived.activeDraft.pricingDetailsByCycle,
       onPricingDetailsChange: updatePricingDetails,
       minimumUnits: derived.activeDraft.minimumUnits,
       onMinimumUnitsChange: updateMinimumUnits,

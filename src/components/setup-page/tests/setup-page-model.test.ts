@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { createPricingDetailsByCycle } from "@/lib/billing-option";
 import { buildSkuCatalogLookup } from "@/lib/catalog";
 import type { DashboardSnapshot, PricePerUnit } from "@/types";
 
@@ -79,24 +80,36 @@ const selectedProduct = {
 
 describe("setup page model", () => {
   it("summarizes mixed create, update, and stock actions", () => {
+    const existingBaseDraft = regionDraftFromExisting(snapshot.skus[0]!, 12);
     const existingDraft = {
-      ...regionDraftFromExisting(snapshot.skus[0]!, 12),
-      pricingDetails: {
-        amount: "21",
-        currency: "USD",
-        entity: "user",
-        ratePeriod: "monthly",
+      ...existingBaseDraft,
+      pricingDetailsByCycle: {
+        ...existingBaseDraft.pricingDetailsByCycle,
+        monthly: {
+          ...existingBaseDraft.pricingDetailsByCycle.monthly,
+          amount: "21",
+          currency: "USD",
+          entity: "user",
+          ratePeriod: "monthly",
+        },
       },
       maximumUnits: "20",
       inventoryQuantity: 18,
     };
+    const indiaBaseDraft = createRegionDraft(
+      pricingOption("monthly", "1400", "INR"),
+    );
     const indiaDraft = {
-      ...createRegionDraft(pricingOption("monthly", "1400", "INR")),
-      pricingDetails: {
-        amount: "1400",
-        currency: "INR",
-        entity: "user",
-        ratePeriod: "month",
+      ...indiaBaseDraft,
+      pricingDetailsByCycle: {
+        ...indiaBaseDraft.pricingDetailsByCycle,
+        monthly: {
+          ...indiaBaseDraft.pricingDetailsByCycle.monthly,
+          amount: "1400",
+          currency: "INR",
+          entity: "user",
+          ratePeriod: "month",
+        },
       },
       maximumUnits: "10",
       inventoryQuantity: 5,
@@ -146,6 +159,10 @@ describe("setup page model", () => {
   });
 
   it("ignores stock changes when maximum units stays unlimited", () => {
+    const indiaBaseDraft = createRegionDraft(
+      pricingOption("monthly", "1400", "INR"),
+    );
+
     const derived = buildSetupPageDerivedState({
       snapshot,
       skuCatalog: buildSkuCatalogLookup(snapshot),
@@ -156,12 +173,16 @@ describe("setup page model", () => {
       activeRegion: "INDIA",
       regionDrafts: {
         INDIA: {
-          ...createRegionDraft(pricingOption("monthly", "1400", "INR")),
-          pricingDetails: {
-            amount: "1400",
-            currency: "INR",
-            entity: "user",
-            ratePeriod: "month",
+          ...indiaBaseDraft,
+          pricingDetailsByCycle: {
+            ...indiaBaseDraft.pricingDetailsByCycle,
+            monthly: {
+              ...indiaBaseDraft.pricingDetailsByCycle.monthly,
+              amount: "1400",
+              currency: "INR",
+              entity: "user",
+              ratePeriod: "month",
+            },
           },
           inventoryQuantity: 7,
         },
@@ -179,13 +200,18 @@ describe("setup page model", () => {
   });
 
   it("blocks saving when an existing regional offer is edited into an invalid state", () => {
+    const invalidBaseDraft = regionDraftFromExisting(snapshot.skus[0]!, 12);
     const invalidDraft = {
-      ...regionDraftFromExisting(snapshot.skus[0]!, 12),
-      pricingDetails: {
-        amount: "",
-        currency: "USD",
-        entity: "user",
-        ratePeriod: "monthly",
+      ...invalidBaseDraft,
+      pricingDetailsByCycle: {
+        ...invalidBaseDraft.pricingDetailsByCycle,
+        monthly: {
+          ...invalidBaseDraft.pricingDetailsByCycle.monthly,
+          amount: "",
+          currency: "USD",
+          entity: "user",
+          ratePeriod: "monthly",
+        },
       },
     };
 
@@ -209,5 +235,56 @@ describe("setup page model", () => {
     expect(derived.summary.saveMessage).toBe(
       "Complete the GCC tab before saving.",
     );
+  });
+
+  it("preserves separate pricing details for existing multi-cycle offers", () => {
+    const multiCycleSnapshot: DashboardSnapshot = {
+      ...snapshot,
+      skus: [
+        {
+          ...snapshot.skus[0]!,
+          pricingOptions: [
+            pricingOption("monthly", "18"),
+            pricingOption("yearly", "180", "USD", "user", "year"),
+          ],
+        },
+      ],
+    };
+    const draft = regionDraftFromExisting(multiCycleSnapshot.skus[0]!, 12);
+
+    expect(draft.billingCycles).toEqual(["monthly", "yearly"]);
+    expect(draft.pricingDetailsByCycle.monthly.amount).toBe("18");
+    expect(draft.pricingDetailsByCycle.yearly.amount).toBe("180");
+
+    const derived = buildSetupPageDerivedState({
+      snapshot: multiCycleSnapshot,
+      skuCatalog: buildSkuCatalogLookup(multiCycleSnapshot),
+      selectedProduct,
+      pricingPlans: [],
+      planName: "Standard",
+      selectedRegions: ["GCC"],
+      activeRegion: "GCC",
+      regionDrafts: {
+        GCC: {
+          ...draft,
+          pricingDetailsByCycle: {
+            ...createPricingDetailsByCycle(pricingOption("monthly", "18")),
+            monthly: {
+              ...draft.pricingDetailsByCycle.monthly,
+            },
+            yearly: {
+              ...draft.pricingDetailsByCycle.yearly,
+            },
+          },
+        },
+      },
+      loadingPricing: false,
+      loading: false,
+    });
+
+    expect(derived.activeRegionEntry?.pricingOptions).toEqual([
+      pricingOption("monthly", "18"),
+      pricingOption("yearly", "180", "USD", "user", "year"),
+    ]);
   });
 });

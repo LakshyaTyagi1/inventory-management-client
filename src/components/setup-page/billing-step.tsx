@@ -10,7 +10,13 @@ import {
 } from "@/components/ui/field";
 import { RegionMultiSelect } from "@/components/ui/region-multi-select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { BillingCycle, PricingDetails, Region, Sku } from "@/types";
+import type {
+  BillingCycle,
+  PricingDetails,
+  PricingDetailsByCycle,
+  Region,
+  Sku,
+} from "@/types";
 
 import { SetupStepCard } from "./setup-step-card";
 
@@ -27,7 +33,7 @@ export function BillingStep({
   generatedSkuCode,
   billingCycles,
   onBillingCyclesChange,
-  pricingDetails,
+  pricingDetailsByCycle,
   onPricingDetailsChange,
   minimumUnits,
   onMinimumUnitsChange,
@@ -48,8 +54,12 @@ export function BillingStep({
   generatedSkuCode: string;
   billingCycles: BillingCycle[];
   onBillingCyclesChange: (value: BillingCycle[]) => void;
-  pricingDetails: PricingDetails;
-  onPricingDetailsChange: (field: keyof PricingDetails, value: string) => void;
+  pricingDetailsByCycle: PricingDetailsByCycle;
+  onPricingDetailsChange: (
+    billingCycle: BillingCycle,
+    field: keyof PricingDetails,
+    value: string,
+  ) => void;
   minimumUnits: string;
   onMinimumUnitsChange: (value: string) => void;
   maximumUnits: string;
@@ -125,7 +135,7 @@ export function BillingStep({
                     }
                     billingCycles={billingCycles}
                     onBillingCyclesChange={onBillingCyclesChange}
-                    pricingDetails={pricingDetails}
+                    pricingDetailsByCycle={pricingDetailsByCycle}
                     onPricingDetailsChange={onPricingDetailsChange}
                     minimumUnits={minimumUnits}
                     onMinimumUnitsChange={onMinimumUnitsChange}

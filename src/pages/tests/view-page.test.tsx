@@ -213,6 +213,15 @@ function renderViewRoute(
   );
 }
 
+function getBillingAmountInput(billingCycle: PricePerUnit["billingCycle"]) {
+  const label =
+    billingCycle === "one_time"
+      ? /one time price amount/i
+      : new RegExp(`^${billingCycle} price amount$`, "i");
+
+  return screen.getByRole("textbox", { name: label });
+}
+
 describe("view page", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -288,7 +297,7 @@ describe("view page", () => {
     });
 
     await act(async () => {
-      fireEvent.change(screen.getByPlaceholderText(/e\.g\. 12/i), {
+      fireEvent.change(getBillingAmountInput("monthly"), {
         target: { value: "25" },
       });
       fireEvent.change(screen.getByPlaceholderText(/^e\.g\. 1$/i), {
@@ -322,6 +331,76 @@ describe("view page", () => {
           maxUnits: 10,
         },
         activationTimeline: "5 Days",
+      });
+    });
+  });
+
+  it("edits each billing cycle amount independently from the view dialog", async () => {
+    const updateSku = vi.spyOn(api, "updateSku").mockResolvedValue({
+      ...snapshot.skus[2]!,
+      pricingOptions: [
+        pricingOption("monthly", "360"),
+        pricingOption("yearly", "330"),
+      ],
+    });
+
+    renderViewRoute();
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: /edit billing for mailchimp premium/i,
+        }),
+      );
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: /edit billing/i }),
+      ).toBeInTheDocument();
+    });
+
+    expect(getBillingAmountInput("monthly")).toHaveValue("350");
+    expect(getBillingAmountInput("yearly")).toHaveValue("320");
+
+    await act(async () => {
+      fireEvent.change(getBillingAmountInput("monthly"), {
+        target: { value: "360" },
+      });
+      fireEvent.change(getBillingAmountInput("yearly"), {
+        target: { value: "330" },
+      });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /save billing/i }));
+    });
+
+    await waitFor(() => {
+      expect(updateSku).toHaveBeenCalledWith("sku-3", {
+        code: "mailchimp-premium-gcc",
+        region: "GCC",
+        seatType: "seat",
+        pricingOptions: [
+          {
+            billingCycle: "monthly",
+            amount: "360",
+            currency: "USD",
+            entity: "user",
+            ratePeriod: "monthly",
+          },
+          {
+            billingCycle: "yearly",
+            amount: "330",
+            currency: "USD",
+            entity: "user",
+            ratePeriod: "year",
+          },
+        ],
+        purchaseConstraints: {
+          maxUnits: 300,
+        },
+        activationTimeline: "7 Working Days",
       });
     });
   });
@@ -383,7 +462,10 @@ describe("view page", () => {
       inventoryPools: [snapshot.inventoryPools[0]!],
     };
 
-    const billingView = renderViewRoute("/view/billing-options", unlimitedSnapshot);
+    const billingView = renderViewRoute(
+      "/view/billing-options",
+      unlimitedSnapshot,
+    );
 
     expect(
       screen.getByText(
@@ -400,7 +482,9 @@ describe("view page", () => {
 
     renderViewRoute("/view/inventory-pools", unlimitedSnapshot);
 
-    expect(screen.getAllByText(/disabled for unlimited/i).length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText(/disabled for unlimited/i).length,
+    ).toBeGreaterThan(0);
     expect(
       screen.queryByRole("button", { name: /edit inventory for jira gcc/i }),
     ).not.toBeInTheDocument();

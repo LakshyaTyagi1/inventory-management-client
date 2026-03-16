@@ -139,6 +139,15 @@ async function toggleBillingCycle(optionLabel: string) {
   });
 }
 
+function getPricingAmountInput(billingCycle: PricePerUnit["billingCycle"]) {
+  const label =
+    billingCycle === "one_time"
+      ? /one time price amount/i
+      : new RegExp(`^${billingCycle} price amount$`, "i");
+
+  return screen.getByRole("textbox", { name: label });
+}
+
 describe("setup page", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -199,7 +208,7 @@ describe("setup page", () => {
     });
   });
 
-  it("creates starting stock together with shared monthly and yearly pricing", async () => {
+  it("creates starting stock together with separate monthly and yearly pricing", async () => {
     vi.spyOn(api, "getProductPricing").mockResolvedValue([
       {
         plan: "Standard",
@@ -236,7 +245,7 @@ describe("setup page", () => {
     ).not.toBeInTheDocument();
 
     await waitFor(() => {
-      expect(screen.getByPlaceholderText(/e\.g\. 12/i)).toHaveValue("18");
+      expect(getPricingAmountInput("monthly")).toHaveValue("18");
     });
 
     expect(
@@ -253,9 +262,13 @@ describe("setup page", () => {
       "aria-pressed",
       "true",
     );
+    expect(getPricingAmountInput("yearly")).toHaveValue("216");
+    expect(screen.getByRole("textbox", { name: /^charged per$/i })).toHaveValue(
+      "user",
+    );
 
     await act(async () => {
-      fireEvent.change(screen.getByPlaceholderText(/e\.g\. 12/i), {
+      fireEvent.change(getPricingAmountInput("monthly"), {
         target: { value: "21" },
       });
       fireEvent.change(screen.getByPlaceholderText(/^e\.g\. 1$/i), {
@@ -299,10 +312,10 @@ describe("setup page", () => {
               },
               {
                 billingCycle: "yearly",
-                amount: "21",
+                amount: "252",
                 currency: "USD",
                 entity: "user",
-                ratePeriod: "month",
+                ratePeriod: "year",
               },
             ],
             purchaseConstraints: {

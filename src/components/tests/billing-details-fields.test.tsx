@@ -1,7 +1,78 @@
+import { useState } from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { BillingDetailsFields } from "@/components/billing-details-fields";
+import { applyPricingDetailsChange } from "@/lib/billing-option";
+import type { BillingCycle, PricingDetailsByCycle } from "@/types";
+
+function buildPricingDetailsByCycle(): PricingDetailsByCycle {
+  return {
+    monthly: {
+      amount: "18",
+      currency: "USD",
+      entity: "user",
+      ratePeriod: "month",
+    },
+    yearly: {
+      amount: "180",
+      currency: "USD",
+      entity: "user",
+      ratePeriod: "year",
+    },
+    one_time: {
+      amount: "300",
+      currency: "USD",
+      entity: "user",
+      ratePeriod: "one time",
+    },
+  };
+}
+
+function ControlledBillingDetailsFields({
+  initialBillingCycles = ["monthly", "yearly"],
+  initialPricingDetailsByCycle = buildPricingDetailsByCycle(),
+}: {
+  initialBillingCycles?: BillingCycle[];
+  initialPricingDetailsByCycle?: PricingDetailsByCycle;
+}) {
+  const [billingCycles, setBillingCycles] =
+    useState<BillingCycle[]>(initialBillingCycles);
+  const [pricingDetailsByCycle, setPricingDetailsByCycle] =
+    useState<PricingDetailsByCycle>(initialPricingDetailsByCycle);
+
+  return (
+    <BillingDetailsFields
+      instanceKey="jira-standard"
+      region="GCC"
+      onRegionChange={vi.fn()}
+      regionDescription="Choose a region"
+      catalogCode="jira-standard-gcc"
+      catalogCodeDescription="Generated from the product, plan, and region."
+      billingCycles={billingCycles}
+      onBillingCyclesChange={setBillingCycles}
+      pricingDetailsByCycle={pricingDetailsByCycle}
+      onPricingDetailsChange={(billingCycle, field, value) => {
+        setPricingDetailsByCycle((current) =>
+          applyPricingDetailsChange({
+            billingCycles,
+            pricingDetailsByCycle: current,
+            billingCycle,
+            field,
+            value,
+          }),
+        );
+      }}
+      minimumUnits="1"
+      onMinimumUnitsChange={vi.fn()}
+      maximumUnits="500"
+      onMaximumUnitsChange={vi.fn()}
+      activationTimeline="5 Days"
+      onActivationTimelineChange={vi.fn()}
+      amountDescription="Required for every billing cycle you keep on the offer."
+    />
+  );
+}
 
 describe("BillingDetailsFields", () => {
   it("shows Unlimited as the active maximum-units option and keeps it input-sized", () => {
@@ -17,12 +88,7 @@ describe("BillingDetailsFields", () => {
         catalogCodeDescription="Generated from the product, plan, and region."
         billingCycles={["monthly"]}
         onBillingCyclesChange={vi.fn()}
-        pricingDetails={{
-          amount: "18",
-          currency: "USD",
-          entity: "user",
-          ratePeriod: "month",
-        }}
+        pricingDetailsByCycle={buildPricingDetailsByCycle()}
         onPricingDetailsChange={vi.fn()}
         minimumUnits="1"
         onMinimumUnitsChange={vi.fn()}
@@ -57,12 +123,7 @@ describe("BillingDetailsFields", () => {
         catalogCodeDescription="Generated from the product, plan, and region."
         billingCycles={["monthly"]}
         onBillingCyclesChange={vi.fn()}
-        pricingDetails={{
-          amount: "18",
-          currency: "USD",
-          entity: "user",
-          ratePeriod: "month",
-        }}
+        pricingDetailsByCycle={buildPricingDetailsByCycle()}
         onPricingDetailsChange={vi.fn()}
         minimumUnits="1"
         onMinimumUnitsChange={vi.fn()}
@@ -79,5 +140,40 @@ describe("BillingDetailsFields", () => {
       "false",
     );
     expect(screen.getByDisplayValue("500")).toBeInTheDocument();
+  });
+
+  it("shows shared currency and charged-per fields while auto-filling yearly from monthly", () => {
+    const initialPricingDetailsByCycle = buildPricingDetailsByCycle();
+    initialPricingDetailsByCycle.yearly.amount = "";
+
+    render(
+      <ControlledBillingDetailsFields
+        initialPricingDetailsByCycle={initialPricingDetailsByCycle}
+      />,
+    );
+
+    expect(
+      screen.getByRole("textbox", { name: /monthly price amount/i }),
+    ).toHaveValue("18");
+    expect(
+      screen.getByRole("textbox", { name: /yearly price amount/i }),
+    ).toHaveValue("");
+    expect(
+      screen.queryByRole("textbox", { name: /monthly charged per/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: /^charged per$/i })).toHaveValue(
+      "user",
+    );
+
+    fireEvent.change(
+      screen.getByRole("textbox", { name: /monthly price amount/i }),
+      {
+        target: { value: "12" },
+      },
+    );
+
+    expect(
+      screen.getByRole("textbox", { name: /yearly price amount/i }),
+    ).toHaveValue("144");
   });
 });

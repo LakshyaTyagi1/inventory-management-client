@@ -10,7 +10,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { BillingCycle, PricingDetails } from "@/types";
+import type {
+  BillingCycle,
+  PricingDetails,
+  PricingDetailsByCycle,
+} from "@/types";
 
 import type { ViewSetupEntry } from "./types";
 
@@ -23,7 +27,7 @@ export function EditBillingDialog({
   generatedCode,
   billingCycles,
   onBillingCyclesChange,
-  pricingDetails,
+  pricingDetailsByCycle,
   onPricingDetailsChange,
   minimumUnits,
   onMinimumUnitsChange,
@@ -43,8 +47,12 @@ export function EditBillingDialog({
   generatedCode: string;
   billingCycles: BillingCycle[];
   onBillingCyclesChange: (value: BillingCycle[]) => void;
-  pricingDetails: PricingDetails;
-  onPricingDetailsChange: (field: keyof PricingDetails, value: string) => void;
+  pricingDetailsByCycle: PricingDetailsByCycle;
+  onPricingDetailsChange: (
+    billingCycle: BillingCycle,
+    field: keyof PricingDetails,
+    value: string,
+  ) => void;
   minimumUnits: string;
   onMinimumUnitsChange: (value: string) => void;
   maximumUnits: string;
@@ -82,7 +90,7 @@ export function EditBillingDialog({
             catalogCodeDescription="The code updates automatically from the product, plan, and region."
             billingCycles={billingCycles}
             onBillingCyclesChange={onBillingCyclesChange}
-            pricingDetails={pricingDetails}
+            pricingDetailsByCycle={pricingDetailsByCycle}
             onPricingDetailsChange={onPricingDetailsChange}
             minimumUnits={minimumUnits}
             onMinimumUnitsChange={onMinimumUnitsChange}

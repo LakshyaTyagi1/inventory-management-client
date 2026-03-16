@@ -1,16 +1,16 @@
 import type { ProductPricingPlan, ProductSearchResult } from "@/lib/api";
 import {
   billingCyclesFromPricingOptions,
-  buildPricingOptionsFromDetails,
+  buildPricingOptionsFromCycleDetails,
   buildPurchaseConstraints,
   buildSkuCode,
-  createEmptyPricingDetails,
+  createPricingDetailsByCycle,
   ensureUniqueSkuCode,
   hasValidPurchaseConstraints,
   isStockTrackingEnabled,
   normalizePricingOptions,
   pricePerUnitFromPlan,
-  pricingDetailsFromPricingOptions,
+  pricingDetailsByCycleFromPricingOptions,
   purchaseConstraintsToFormValues,
   sameLabel,
 } from "@/lib/billing-option";
@@ -21,7 +21,7 @@ import type {
   InventoryPool,
   Plan,
   PricePerUnit,
-  PricingDetails,
+  PricingDetailsByCycle,
   Product,
   PurchaseConstraints,
   Region,
@@ -34,7 +34,7 @@ export const defaultInventoryActor = "operations";
 
 export type RegionDraft = {
   billingCycles: BillingCycle[];
-  pricingDetails: PricingDetails;
+  pricingDetailsByCycle: PricingDetailsByCycle;
   minimumUnits: string;
   maximumUnits: string;
   activationTimeline: string;
@@ -144,9 +144,7 @@ export function createRegionDraft(pricingOption?: PricePerUnit): RegionDraft {
     billingCycles: pricingOption
       ? billingCyclesFromPricingOptions([pricingOption])
       : ["monthly"],
-    pricingDetails: pricingOption
-      ? pricingDetailsFromPricingOptions([pricingOption])
-      : createEmptyPricingDetails(),
+    pricingDetailsByCycle: createPricingDetailsByCycle(pricingOption),
     minimumUnits: "",
     maximumUnits: "",
     activationTimeline: "",
@@ -158,7 +156,11 @@ export function createRegionDraft(pricingOption?: PricePerUnit): RegionDraft {
 export function cloneRegionDraft(source: RegionDraft): RegionDraft {
   return {
     billingCycles: [...source.billingCycles],
-    pricingDetails: { ...source.pricingDetails },
+    pricingDetailsByCycle: {
+      monthly: { ...source.pricingDetailsByCycle.monthly },
+      yearly: { ...source.pricingDetailsByCycle.yearly },
+      one_time: { ...source.pricingDetailsByCycle.one_time },
+    },
     minimumUnits: source.minimumUnits,
     maximumUnits: source.maximumUnits,
     activationTimeline: source.activationTimeline,
@@ -177,7 +179,9 @@ export function regionDraftFromExisting(
 
   return {
     billingCycles: billingCyclesFromPricingOptions(sku.pricingOptions),
-    pricingDetails: pricingDetailsFromPricingOptions(sku.pricingOptions),
+    pricingDetailsByCycle: pricingDetailsByCycleFromPricingOptions(
+      sku.pricingOptions,
+    ),
     minimumUnits: purchaseConstraintValues.minUnits,
     maximumUnits: purchaseConstraintValues.maxUnits,
     activationTimeline: sku.activationTimeline ?? "",
@@ -241,9 +245,9 @@ export function buildRegionEntries(input: {
           (pool) => pool.skuId === existingSku._id,
         )
       : undefined;
-    const pricingOptions = buildPricingOptionsFromDetails({
+    const pricingOptions = buildPricingOptionsFromCycleDetails({
       billingCycles: draft.billingCycles,
-      pricingDetails: draft.pricingDetails,
+      pricingDetailsByCycle: draft.pricingDetailsByCycle,
     });
     const normalizedPricingOptions = normalizePricingOptions(pricingOptions);
     const purchaseConstraints = buildPurchaseConstraints({

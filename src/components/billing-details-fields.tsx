@@ -1,8 +1,15 @@
-import type { BillingCycle, PricingDetails } from "@/types";
+import type {
+  BillingCycle,
+  PricingDetails,
+  PricingDetailsByCycle,
+} from "@/types";
 import {
   commonCurrencyOptions,
   commonRegionOptions,
+  orderBillingCycles,
+  sharedPricingDetailsFromCycleDetails,
 } from "@/lib/billing-option";
+import { formatBillingCycleLabel } from "@/lib/catalog";
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { BillingCycleMultiSelect } from "@/components/ui/billing-cycle-multi-select";
@@ -20,7 +27,7 @@ export function BillingDetailsFields({
   catalogCodeDescription,
   billingCycles,
   onBillingCyclesChange,
-  pricingDetails,
+  pricingDetailsByCycle,
   onPricingDetailsChange,
   minimumUnits,
   onMinimumUnitsChange,
@@ -41,8 +48,12 @@ export function BillingDetailsFields({
   catalogCodeDescription: string;
   billingCycles: BillingCycle[];
   onBillingCyclesChange: (value: BillingCycle[]) => void;
-  pricingDetails: PricingDetails;
-  onPricingDetailsChange: (field: keyof PricingDetails, value: string) => void;
+  pricingDetailsByCycle: PricingDetailsByCycle;
+  onPricingDetailsChange: (
+    billingCycle: BillingCycle,
+    field: keyof PricingDetails,
+    value: string,
+  ) => void;
   minimumUnits: string;
   onMinimumUnitsChange: (value: string) => void;
   maximumUnits: string;
@@ -53,6 +64,32 @@ export function BillingDetailsFields({
   amountDescription: string;
 }) {
   const unlimitedSelected = maximumUnits.length === 0;
+  const selectedBillingCycles = orderBillingCycles(billingCycles);
+  const sharedPricingDetails = sharedPricingDetailsFromCycleDetails({
+    billingCycles: selectedBillingCycles,
+    pricingDetailsByCycle,
+  });
+
+  const renderAmountField = (
+    billingCycle: BillingCycle,
+    label: string,
+    description: string,
+  ) => (
+    <Field key={billingCycle}>
+      <FieldLabel>{label}</FieldLabel>
+      <Input
+        aria-label={label}
+        value={pricingDetailsByCycle[billingCycle].amount}
+        onChange={(event) =>
+          onPricingDetailsChange(billingCycle, "amount", event.target.value)
+        }
+        placeholder="e.g. 12"
+        inputMode="decimal"
+        disabled={disabled}
+      />
+      <FieldDescription>{description}</FieldDescription>
+    </Field>
+  );
 
   return (
     <div className="grid gap-4 sm:grid-cols-2">
@@ -92,48 +129,89 @@ export function BillingDetailsFields({
               disabled={disabled}
             />
             <FieldDescription>
-              Use one shared pricing setup across the selected billing cycles.
+              Use separate amounts per selected cycle, with one shared currency
+              and charged-per value.
             </FieldDescription>
           </Field>
 
-          <Field>
-            <FieldLabel>Price amount</FieldLabel>
-            <Input
-              value={pricingDetails.amount}
-              onChange={(event) =>
-                onPricingDetailsChange("amount", event.target.value)
-              }
-              placeholder="e.g. 12"
-              inputMode="decimal"
-              disabled={disabled}
-            />
-            <FieldDescription>{amountDescription}</FieldDescription>
-          </Field>
+          {selectedBillingCycles.length > 0 ? (
+            <>
+              {selectedBillingCycles.includes("monthly")
+                ? renderAmountField(
+                    "monthly",
+                    "Monthly price amount",
+                    selectedBillingCycles.includes("yearly")
+                      ? "Used to auto-fill the yearly amount as monthly x12 until you adjust the yearly value."
+                      : amountDescription,
+                  )
+                : null}
 
-          <Field>
-            <FieldLabel>Currency</FieldLabel>
-            <SelectOrInput
-              key={`${instanceKey}-currency`}
-              options={commonCurrencyOptions}
-              value={pricingDetails.currency}
-              onChange={(value) => onPricingDetailsChange("currency", value)}
-              placeholder="Select a currency"
-              inputPlaceholder="e.g. AED"
-              disabled={disabled}
-            />
-          </Field>
+              {selectedBillingCycles.includes("yearly")
+                ? renderAmountField(
+                    "yearly",
+                    "Yearly price amount",
+                    selectedBillingCycles.includes("monthly")
+                      ? "Starts from monthly x12 and can be adjusted if the annual price differs."
+                      : amountDescription,
+                  )
+                : null}
 
-          <Field>
-            <FieldLabel>Charged per</FieldLabel>
-            <Input
-              value={pricingDetails.entity}
-              onChange={(event) =>
-                onPricingDetailsChange("entity", event.target.value)
-              }
-              placeholder="e.g. user"
-              disabled={disabled}
-            />
-          </Field>
+              {selectedBillingCycles.includes("one_time")
+                ? renderAmountField(
+                    "one_time",
+                    `${formatBillingCycleLabel("one_time")} price amount`,
+                    amountDescription,
+                  )
+                : null}
+
+              <Field>
+                <FieldLabel>Currency</FieldLabel>
+                <SelectOrInput
+                  key={`${instanceKey}-shared-currency`}
+                  aria-label="Currency"
+                  options={commonCurrencyOptions}
+                  value={sharedPricingDetails.currency}
+                  onChange={(value) =>
+                    onPricingDetailsChange(
+                      selectedBillingCycles[0] ?? "monthly",
+                      "currency",
+                      value,
+                    )
+                  }
+                  placeholder="Select a currency"
+                  inputPlaceholder="e.g. AED"
+                  disabled={disabled}
+                />
+                <FieldDescription>
+                  Applied to every selected billing cycle.
+                </FieldDescription>
+              </Field>
+
+              <Field>
+                <FieldLabel>Charged per</FieldLabel>
+                <Input
+                  aria-label="Charged per"
+                  value={sharedPricingDetails.entity}
+                  onChange={(event) =>
+                    onPricingDetailsChange(
+                      selectedBillingCycles[0] ?? "monthly",
+                      "entity",
+                      event.target.value,
+                    )
+                  }
+                  placeholder="e.g. user"
+                  disabled={disabled}
+                />
+                <FieldDescription>
+                  Shared across the selected billing cycles.
+                </FieldDescription>
+              </Field>
+            </>
+          ) : (
+            <p className="rounded-lg border border-dashed px-4 py-3 text-sm text-muted-foreground sm:col-span-2">
+              Select at least one billing cycle to enter pricing.
+            </p>
+          )}
         </div>
       </div>
 

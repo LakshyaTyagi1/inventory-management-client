@@ -3,6 +3,7 @@ import type {
   BillingCycle,
   PricePerUnit,
   PricingDetails,
+  PricingDetailsByCycle,
   PurchaseConstraints,
   Region,
 } from "@/types";
@@ -12,6 +13,16 @@ const preferredBillingCycleOrder: BillingCycle[] = [
   "yearly",
   "one_time",
 ];
+
+const defaultRatePeriodsByCycle: Record<BillingCycle, string> = {
+  monthly: "month",
+  yearly: "year",
+  one_time: "one time",
+};
+
+const sharedPricingFields: Array<
+  keyof Pick<PricingDetails, "currency" | "entity">
+> = ["currency", "entity"];
 
 const preferredRegionOrder: Region[] = ["GCC", "INDIA"];
 
@@ -96,6 +107,207 @@ export function createEmptyPricingDetails(): PricingDetails {
   };
 }
 
+function clonePricingDetailsByCycle(
+  pricingDetailsByCycle: PricingDetailsByCycle,
+): PricingDetailsByCycle {
+  return {
+    monthly: { ...pricingDetailsByCycle.monthly },
+    yearly: { ...pricingDetailsByCycle.yearly },
+    one_time: { ...pricingDetailsByCycle.one_time },
+  };
+}
+
+export function autoPopulateYearlyAmount(monthlyAmount: string): string {
+  const normalizedAmount = monthlyAmount.trim();
+
+  if (!/^\d+(?:\.\d+)?$/.test(normalizedAmount)) {
+    return "";
+  }
+
+  const [wholePart, fractionPart = ""] = normalizedAmount.split(".");
+  const scale = BigInt(`1${"0".repeat(fractionPart.length)}`);
+  const integerValue = BigInt(`${wholePart}${fractionPart}`);
+  const yearlyValue = integerValue * 12n;
+
+  if (fractionPart.length === 0) {
+    return yearlyValue.toString();
+  }
+
+  const paddedValue = yearlyValue
+    .toString()
+    .padStart(fractionPart.length + 1, "0");
+  const integerDigits = paddedValue.slice(0, -fractionPart.length);
+  const fractionalDigits = paddedValue
+    .slice(-fractionPart.length)
+    .replace(/0+$/, "");
+
+  return fractionalDigits.length > 0
+    ? `${integerDigits}.${fractionalDigits}`
+    : integerDigits;
+}
+
+function amountFromSeedForCycle(
+  billingCycle: BillingCycle,
+  seed?: PricePerUnit,
+): string {
+  if (!seed) return "";
+  if (seed.billingCycle === billingCycle) return seed.amount;
+  if (seed.billingCycle === "monthly" && billingCycle === "yearly") {
+    return autoPopulateYearlyAmount(seed.amount);
+  }
+
+  return "";
+}
+
+function createPricingDetailsForCycle(
+  billingCycle: BillingCycle,
+  seed?: PricePerUnit,
+): PricingDetails {
+  return {
+    amount: amountFromSeedForCycle(billingCycle, seed),
+    currency: seed?.currency ?? "USD",
+    entity: seed?.entity ?? "",
+    ratePeriod:
+      (seed?.billingCycle === billingCycle ? seed.ratePeriod : undefined) ??
+      (seed ? defaultRatePeriodsByCycle[billingCycle] : ""),
+  };
+}
+
+export function createPricingDetailsByCycle(
+  seed?: PricePerUnit,
+): PricingDetailsByCycle {
+  return {
+    monthly: createPricingDetailsForCycle("monthly", seed),
+    yearly: createPricingDetailsForCycle("yearly", seed),
+    one_time: createPricingDetailsForCycle("one_time", seed),
+  };
+}
+
+export function sharedPricingDetailsFromCycleDetails(input: {
+  billingCycles: BillingCycle[];
+  pricingDetailsByCycle: PricingDetailsByCycle;
+}): Pick<PricingDetails, "currency" | "entity"> {
+  const primaryBillingCycle =
+    orderBillingCycles(input.billingCycles)[0] ?? "monthly";
+  const primaryPricingDetails =
+    input.pricingDetailsByCycle[primaryBillingCycle];
+
+  return {
+    currency: primaryPricingDetails.currency,
+    entity: primaryPricingDetails.entity,
+  };
+}
+
+export function syncPricingDetailsByBillingCycles(input: {
+  billingCycles: BillingCycle[];
+  pricingDetailsByCycle: PricingDetailsByCycle;
+}): PricingDetailsByCycle {
+  const selectedBillingCycles = orderBillingCycles(input.billingCycles);
+  const nextPricingDetailsByCycle = clonePricingDetailsByCycle(
+    input.pricingDetailsByCycle,
+  );
+
+  if (selectedBillingCycles.length === 0) {
+    return nextPricingDetailsByCycle;
+  }
+
+  const primaryPricingDetails =
+    nextPricingDetailsByCycle[selectedBillingCycles[0]!];
+
+  for (const billingCycle of selectedBillingCycles) {
+    nextPricingDetailsByCycle[billingCycle] = {
+      ...nextPricingDetailsByCycle[billingCycle],
+      currency: primaryPricingDetails.currency,
+      entity: primaryPricingDetails.entity,
+      ratePeriod:
+        nextPricingDetailsByCycle[billingCycle].ratePeriod ||
+        defaultRatePeriodsByCycle[billingCycle],
+    };
+  }
+
+  if (
+    selectedBillingCycles.includes("monthly") &&
+    selectedBillingCycles.includes("yearly")
+  ) {
+    const nextYearlyAmount = autoPopulateYearlyAmount(
+      nextPricingDetailsByCycle.monthly.amount,
+    );
+
+    if (
+      nextPricingDetailsByCycle.yearly.amount.trim().length === 0 &&
+      nextYearlyAmount
+    ) {
+      nextPricingDetailsByCycle.yearly.amount = nextYearlyAmount;
+    }
+  }
+
+  return nextPricingDetailsByCycle;
+}
+
+export function applyPricingDetailsChange(input: {
+  billingCycles: BillingCycle[];
+  pricingDetailsByCycle: PricingDetailsByCycle;
+  billingCycle: BillingCycle;
+  field: keyof PricingDetails;
+  value: string;
+}): PricingDetailsByCycle {
+  const nextPricingDetailsByCycle = clonePricingDetailsByCycle(
+    input.pricingDetailsByCycle,
+  );
+  const selectedBillingCycles = orderBillingCycles(input.billingCycles);
+
+  if (
+    sharedPricingFields.includes(
+      input.field as keyof Pick<PricingDetails, "currency" | "entity">,
+    )
+  ) {
+    const targetBillingCycles =
+      selectedBillingCycles.length > 0
+        ? selectedBillingCycles
+        : [input.billingCycle];
+
+    for (const billingCycle of targetBillingCycles) {
+      nextPricingDetailsByCycle[billingCycle] = {
+        ...nextPricingDetailsByCycle[billingCycle],
+        [input.field]: input.value,
+      };
+    }
+
+    return nextPricingDetailsByCycle;
+  }
+
+  nextPricingDetailsByCycle[input.billingCycle] = {
+    ...nextPricingDetailsByCycle[input.billingCycle],
+    [input.field]: input.value,
+  };
+
+  if (
+    input.field === "amount" &&
+    input.billingCycle === "monthly" &&
+    selectedBillingCycles.includes("yearly")
+  ) {
+    const previousAutoYearlyAmount = autoPopulateYearlyAmount(
+      input.pricingDetailsByCycle.monthly.amount,
+    );
+    const nextAutoYearlyAmount = autoPopulateYearlyAmount(input.value);
+    const currentYearlyAmount =
+      input.pricingDetailsByCycle.yearly.amount.trim();
+
+    if (
+      currentYearlyAmount.length === 0 ||
+      (previousAutoYearlyAmount.length > 0 &&
+        currentYearlyAmount === previousAutoYearlyAmount)
+    ) {
+      nextPricingDetailsByCycle.yearly = {
+        ...nextPricingDetailsByCycle.yearly,
+        amount: nextAutoYearlyAmount,
+      };
+    }
+  }
+
+  return nextPricingDetailsByCycle;
+}
+
 export function pricingDetailsFromPricingOptions(
   pricingOptions: PricePerUnit[],
 ): PricingDetails {
@@ -107,6 +319,21 @@ export function pricingDetailsFromPricingOptions(
     entity: primaryPricingOption.entity ?? "",
     ratePeriod: primaryPricingOption.ratePeriod ?? "",
   };
+}
+
+export function pricingDetailsByCycleFromPricingOptions(
+  pricingOptions: PricePerUnit[],
+): PricingDetailsByCycle {
+  const primaryPricingOption = pricingOptions[0];
+  const pricingDetailsByCycle =
+    createPricingDetailsByCycle(primaryPricingOption);
+
+  for (const pricingOption of pricingOptions) {
+    pricingDetailsByCycle[pricingOption.billingCycle] =
+      createPricingDetailsForCycle(pricingOption.billingCycle, pricingOption);
+  }
+
+  return pricingDetailsByCycle;
 }
 
 export function billingCyclesFromPricingOptions(
@@ -128,6 +355,23 @@ export function buildPricingOptionsFromDetails(input: {
     entity: input.pricingDetails.entity,
     ratePeriod: input.pricingDetails.ratePeriod,
   }));
+}
+
+export function buildPricingOptionsFromCycleDetails(input: {
+  billingCycles: BillingCycle[];
+  pricingDetailsByCycle: PricingDetailsByCycle;
+}): PricePerUnit[] {
+  return orderBillingCycles(input.billingCycles).map((billingCycle) => {
+    const pricingDetails = input.pricingDetailsByCycle[billingCycle];
+
+    return {
+      billingCycle,
+      amount: pricingDetails.amount,
+      currency: pricingDetails.currency,
+      entity: pricingDetails.entity,
+      ratePeriod: pricingDetails.ratePeriod,
+    };
+  });
 }
 
 export function createEmptyPricePerUnit(
@@ -191,7 +435,14 @@ export function normalizePricePerUnit(
 export function normalizePricingOptions(
   pricingOptions: PricePerUnit[],
 ): PricePerUnit[] {
-  return pricingOptions.map((option) => normalizePricePerUnit(option));
+  const pricingOptionsByCycle = new Map(
+    pricingOptions.map((option) => [option.billingCycle, option]),
+  );
+
+  return orderBillingCycles([...pricingOptionsByCycle.keys()]).map(
+    (billingCycle) =>
+      normalizePricePerUnit(pricingOptionsByCycle.get(billingCycle)!),
+  );
 }
 
 export function nextPricingCycle(pricingOptions: PricePerUnit[]): BillingCycle {

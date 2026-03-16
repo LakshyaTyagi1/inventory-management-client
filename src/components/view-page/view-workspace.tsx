@@ -9,22 +9,29 @@ import type {
   ViewSetupEntry,
 } from "@/components/view-page/types";
 import {
+  applyPricingDetailsChange,
   billingCyclesFromPricingOptions,
-  buildPricingOptionsFromDetails,
+  buildPricingOptionsFromCycleDetails,
   buildPurchaseConstraints,
   buildSkuCode,
-  createEmptyPricingDetails,
+  createPricingDetailsByCycle,
   ensureUniqueSkuCode,
   hasValidPurchaseConstraints,
   isStockTrackingEnabled,
   normalizePricingOptions,
   normalizeRegion,
-  pricingDetailsFromPricingOptions,
+  pricingDetailsByCycleFromPricingOptions,
   purchaseConstraintsToFormValues,
+  syncPricingDetailsByBillingCycles,
 } from "@/lib/billing-option";
 import { buildInventoryRows, buildViewSetupEntries } from "@/lib/view-data";
 import { api } from "@/lib/api";
-import type { BillingCycle, DashboardSnapshot, PricingDetails } from "@/types";
+import type {
+  BillingCycle,
+  DashboardSnapshot,
+  PricingDetails,
+  PricingDetailsByCycle,
+} from "@/types";
 
 type InventoryDialogTarget = {
   skuId: string;
@@ -56,8 +63,8 @@ export function ViewWorkspace({
   const [billingCycles, setBillingCycles] = useState<BillingCycle[]>([
     "monthly",
   ]);
-  const [billingPricingDetails, setBillingPricingDetails] =
-    useState<PricingDetails>(createEmptyPricingDetails());
+  const [billingPricingDetailsByCycle, setBillingPricingDetailsByCycle] =
+    useState<PricingDetailsByCycle>(createPricingDetailsByCycle());
   const [billingMinUnits, setBillingMinUnits] = useState("");
   const [billingMaxUnits, setBillingMaxUnits] = useState("");
   const [activationTimeline, setActivationTimeline] = useState("");
@@ -111,8 +118,10 @@ export function ViewWorkspace({
     setBillingCycles(
       billingCyclesFromPricingOptions(activeBillingEntry.sku.pricingOptions),
     );
-    setBillingPricingDetails(
-      pricingDetailsFromPricingOptions(activeBillingEntry.sku.pricingOptions),
+    setBillingPricingDetailsByCycle(
+      pricingDetailsByCycleFromPricingOptions(
+        activeBillingEntry.sku.pricingOptions,
+      ),
     );
     const purchaseConstraintValues = purchaseConstraintsToFormValues(
       activeBillingEntry.sku.purchaseConstraints,
@@ -131,11 +140,11 @@ export function ViewWorkspace({
 
   const billingPricingOptions = useMemo(
     () =>
-      buildPricingOptionsFromDetails({
+      buildPricingOptionsFromCycleDetails({
         billingCycles,
-        pricingDetails: billingPricingDetails,
+        pricingDetailsByCycle: billingPricingDetailsByCycle,
       }),
-    [billingCycles, billingPricingDetails],
+    [billingCycles, billingPricingDetailsByCycle],
   );
 
   const normalizedBillingRegion = normalizeRegion(billingRegion);
@@ -212,13 +221,29 @@ export function ViewWorkspace({
       : inventoryQuantity > 0);
 
   const updateBillingPricingOption = (
+    billingCycle: BillingCycle,
     field: keyof PricingDetails,
     value: string,
   ) => {
-    setBillingPricingDetails((current) => ({
-      ...current,
-      [field]: value,
-    }));
+    setBillingPricingDetailsByCycle((current) =>
+      applyPricingDetailsChange({
+        billingCycles,
+        pricingDetailsByCycle: current,
+        billingCycle,
+        field,
+        value,
+      }),
+    );
+  };
+
+  const updateBillingCycles = (value: BillingCycle[]) => {
+    setBillingCycles(value);
+    setBillingPricingDetailsByCycle((current) =>
+      syncPricingDetailsByBillingCycles({
+        billingCycles: value,
+        pricingDetailsByCycle: current,
+      }),
+    );
   };
 
   const closeBillingDialog = () => setBillingDialogSkuId(null);
@@ -247,8 +272,8 @@ export function ViewWorkspace({
         onRegionChange={setBillingRegion}
         generatedCode={generatedBillingCode}
         billingCycles={billingCycles}
-        onBillingCyclesChange={setBillingCycles}
-        pricingDetails={billingPricingDetails}
+        onBillingCyclesChange={updateBillingCycles}
+        pricingDetailsByCycle={billingPricingDetailsByCycle}
         onPricingDetailsChange={updateBillingPricingOption}
         minimumUnits={billingMinUnits}
         onMinimumUnitsChange={setBillingMinUnits}

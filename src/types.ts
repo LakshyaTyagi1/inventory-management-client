@@ -34,6 +34,8 @@ export type PricingDetails = {
   ratePeriod: string;
 };
 
+export type PricingDetailsByCycle = Record<BillingCycle, PricingDetails>;
+
 export type PurchaseConstraints = {
   minUnits?: number;
   maxUnits?: number;
