@@ -58,3 +58,171 @@ describe("api.searchProducts", () => {
     ]);
   });
 });
+
+describe("api sku response normalization", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  it("normalizes unlimited max units from sku list responses", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => [
+        {
+          product: {
+            _id: "product-1",
+            externalId: "pipedrive",
+            name: "Pipedrive",
+            vendor: "Pipedrive",
+            description: "CRM",
+            logoUrl: "https://example.com/logo.png",
+            createdAt: "2026-03-16T00:31:45.432Z",
+          },
+          plan: {
+            _id: "plan-1",
+            productId: "product-1",
+            name: "Starter Pack",
+            planType: "standard",
+            createdAt: "2026-03-16T00:31:45.432Z",
+          },
+          sku: {
+            _id: "sku-1",
+            planId: "plan-1",
+            code: "pipedrive-starter-pack-india",
+            region: "INDIA",
+            seatType: "seat",
+            pricingOptions: [
+              {
+                billingCycle: "monthly",
+                amount: "3060",
+                currency: "INR",
+                entity: "user",
+                ratePeriod: "month",
+              },
+            ],
+            purchaseConstraints: {
+              minUnits: 1,
+              maxUnits: "unlimited",
+            },
+            activationTimeline: "5",
+            createdAt: "2026-03-16T00:31:45.459Z",
+          },
+        },
+      ],
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+    vi.resetModules();
+
+    const { api } = await import("./api");
+    const results = await api.getSkus();
+
+    expect(results).toEqual([
+      {
+        product: {
+          _id: "product-1",
+          externalId: "pipedrive",
+          name: "Pipedrive",
+          vendor: "Pipedrive",
+          description: "CRM",
+          logoUrl: "https://example.com/logo.png",
+          createdAt: "2026-03-16T00:31:45.432Z",
+        },
+        plan: {
+          _id: "plan-1",
+          productId: "product-1",
+          name: "Starter Pack",
+          planType: "standard",
+          createdAt: "2026-03-16T00:31:45.432Z",
+        },
+        sku: {
+          _id: "sku-1",
+          planId: "plan-1",
+          code: "pipedrive-starter-pack-india",
+          region: "INDIA",
+          seatType: "seat",
+          pricingOptions: [
+            {
+              billingCycle: "monthly",
+              amount: "3060",
+              currency: "INR",
+              entity: "user",
+              ratePeriod: "month",
+            },
+          ],
+          purchaseConstraints: {
+            minUnits: 1,
+          },
+          activationTimeline: "5",
+          createdAt: "2026-03-16T00:31:45.459Z",
+        },
+      },
+    ]);
+  });
+
+  it("normalizes unlimited max units from dashboard responses", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        products: [
+          {
+            _id: "product-1",
+            externalId: "pipedrive",
+            name: "Pipedrive",
+            vendor: "Pipedrive",
+            description: "CRM",
+            logoUrl: "https://example.com/logo.png",
+            createdAt: "2026-03-16T00:31:45.432Z",
+          },
+        ],
+        plans: [
+          {
+            _id: "plan-1",
+            productId: "product-1",
+            name: "Starter Pack",
+            planType: "standard",
+            createdAt: "2026-03-16T00:31:45.432Z",
+          },
+        ],
+        skus: [
+          {
+            _id: "sku-1",
+            planId: "plan-1",
+            code: "pipedrive-starter-pack-india",
+            region: "INDIA",
+            seatType: "seat",
+            pricingOptions: [
+              {
+                billingCycle: "monthly",
+                amount: "3060",
+                currency: "INR",
+                entity: "user",
+                ratePeriod: "month",
+              },
+            ],
+            purchaseConstraints: {
+              minUnits: 1,
+              maxUnits: "unlimited",
+            },
+            activationTimeline: "5",
+            createdAt: "2026-03-16T00:31:45.459Z",
+          },
+        ],
+        inventoryPools: [],
+        auditLogs: [],
+      }),
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+    vi.resetModules();
+
+    const { api } = await import("./api");
+    const results = await api.getDashboard();
+
+    expect(results.skus[0]!.purchaseConstraints).toEqual({
+      minUnits: 1,
+    });
+  });
+});
