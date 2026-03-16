@@ -67,7 +67,8 @@ export function SetupReviewPanel({
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="outline">stock disabled</Badge>
               <span>
-                {activeRegion} is set to Unlimited, so starting stock is skipped.
+                {activeRegion} is set to Unlimited, so starting stock is
+                skipped.
               </span>
             </div>
           </div>

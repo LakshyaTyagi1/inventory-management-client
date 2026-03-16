@@ -11,6 +11,7 @@ import type { ProductPricingPlan, ProductSearchResult } from "@/lib/api";
 import { api } from "@/lib/api";
 import {
   applyPricingDetailsChange,
+  isStockTrackingEnabled,
   orderRegions,
   syncPricingDetailsByBillingCycles,
 } from "@/lib/billing-option";
@@ -269,9 +270,11 @@ export function useSetupPage({
       const catalogEntry = skuCatalog.get(skuId);
       if (!catalogEntry?.product || !catalogEntry.plan) return;
 
-      const matchingPool = snapshot.inventoryPools.find(
-        (pool) => pool.skuId === skuId,
-      );
+      const matchingPool = isStockTrackingEnabled(
+        catalogEntry.sku.purchaseConstraints,
+      )
+        ? snapshot.inventoryPools.find((pool) => pool.skuId === skuId)
+        : undefined;
 
       setSelectedProduct(toSearchResult(catalogEntry.product));
       setSearchQuery(catalogEntry.product.name);

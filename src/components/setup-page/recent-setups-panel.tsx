@@ -6,6 +6,7 @@ import {
   formatPriceLine,
   formatSkuLabel,
 } from "@/lib/catalog";
+import { isStockTrackingEnabled } from "@/lib/billing-option";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -60,6 +61,9 @@ export function RecentSetupsPanel({
           <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
             {entries.map((entry) => {
               const pricingOptions = entry.sku.pricingOptions ?? [];
+              const stockTrackingEnabled = isStockTrackingEnabled(
+                entry.sku.purchaseConstraints,
+              );
 
               return (
                 <div key={entry.sku._id} className="rounded-xl border p-4">
@@ -88,9 +92,11 @@ export function RecentSetupsPanel({
                       </p>
                     ))}
                     <p>
-                      {entry.pools.length > 0
-                        ? `${entry.trackedQuantity} tracked across ${entry.pools.length} pool${entry.pools.length === 1 ? "" : "s"}`
-                        : "No stock tracked yet"}
+                      {!stockTrackingEnabled
+                        ? "Unlimited stock"
+                        : entry.pools.length > 0
+                          ? `${entry.trackedQuantity} tracked across ${entry.pools.length} pool${entry.pools.length === 1 ? "" : "s"}`
+                          : "No stock tracked yet"}
                     </p>
                   </div>
 

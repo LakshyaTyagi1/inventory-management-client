@@ -345,7 +345,10 @@ export function buildRecentSetupEntries(
       const pools = snapshot.inventoryPools.filter(
         (pool) => pool.skuId === sku._id,
       );
-      const trackedQuantity = pools.reduce(
+      const trackedPools = isStockTrackingEnabled(sku.purchaseConstraints)
+        ? pools
+        : [];
+      const trackedQuantity = trackedPools.reduce(
         (sum, pool) => sum + pool.totalQuantity,
         0,
       );
@@ -354,7 +357,7 @@ export function buildRecentSetupEntries(
         sku,
         plan: catalogEntry?.plan,
         product: catalogEntry?.product,
-        pools,
+        pools: trackedPools,
         trackedQuantity,
       };
     })
