@@ -4,6 +4,7 @@ import type {
   PricePerUnit,
   PurchaseConstraints,
   Product,
+  SaleListEntry,
   Sku,
   SkuCatalogEntry,
 } from "../types";
@@ -151,6 +152,7 @@ export const api = {
     normalizeDashboardSnapshot(
       await request<ApiDashboardSnapshot>("/api/dashboard"),
     ),
+  getSales: async () => request<SaleListEntry[]>("/api/sales"),
   getSkus: async () =>
     (await request<ApiSkuCatalogEntry[]>("/api/skus")).map(
       normalizeSkuCatalogEntry,

@@ -60,6 +60,45 @@ export type InventoryPool = {
   updatedAt: string;
 };
 
+export type SalePartner = {
+  name: string;
+  saleReference: string;
+};
+
+export type SaleCustomer = {
+  name: string;
+  email: string;
+  phone: string;
+  additionalInfo?: Record<string, string>;
+};
+
+export type SalePayment = {
+  provider: string;
+  transactionId: string;
+  amount: string;
+  currency: string;
+  status: string;
+  metadata?: Record<string, string>;
+};
+
+export type Sale = {
+  _id: string;
+  skuId: string;
+  skuCode: string;
+  quantity: number;
+  partner: SalePartner;
+  customer: SaleCustomer;
+  payment: SalePayment;
+  createdAt: string;
+};
+
+export type SaleListEntry = {
+  sale: Sale;
+  sku: Sku;
+  plan: Plan;
+  product: Product;
+};
+
 export type AuditLog = {
   _id: string;
   action: string;
