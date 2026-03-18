@@ -1,4 +1,6 @@
 import type {
+  AuthSession,
+  AuthUser,
   DashboardSnapshot,
   Plan,
   PricePerUnit,
@@ -8,16 +10,50 @@ import type {
   Sku,
   SkuCatalogEntry,
 } from "../types";
+import { dispatchAuthExpired, getAccessToken } from "./auth";
 
 const apiBaseUrl = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:4000";
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+type RequestOptions = {
+  auth?: boolean;
+};
+
+function buildHeaders(
+  initHeaders?: HeadersInit,
+  authToken?: string | null,
+): { hasAuthorization: boolean; headers: Record<string, string> } {
+  const headers = new Headers(initHeaders);
+
+  if (!headers.has("content-type")) {
+    headers.set("content-type", "application/json");
+  }
+
+  if (authToken) {
+    headers.set("authorization", `Bearer ${authToken}`);
+  }
+
+  return {
+    hasAuthorization: headers.has("authorization"),
+    headers: Object.fromEntries(headers.entries()),
+  };
+}
+
+async function request<T>(
+  path: string,
+  init?: RequestInit,
+  options?: RequestOptions,
+): Promise<T> {
+  const authToken = options?.auth === false ? null : getAccessToken();
+  const { hasAuthorization, headers } = buildHeaders(init?.headers, authToken);
+
   const response = await fetch(`${apiBaseUrl}${path}`, {
-    headers: {
-      "content-type": "application/json",
-    },
     ...init,
+    headers,
   });
+
+  if (response.status === 401 && hasAuthorization) {
+    dispatchAuthExpired();
+  }
 
   if (!response.ok) {
     const payload = (await response
@@ -106,6 +142,26 @@ export type CatalogEntryResponse = {
   sku: Sku;
 };
 
+type ApiAuthUser = {
+  _id: string;
+  email_id: string;
+  first_name: string;
+  last_name: string;
+  user_access: string;
+  company?: string;
+  company_id?: string;
+};
+
+type ApiAuthSession = {
+  token: string;
+  user: ApiAuthUser;
+};
+
+type AuthMeResponse = {
+  authType: "user";
+  user: ApiAuthUser;
+};
+
 type ApiPurchaseConstraints = {
   minUnits?: number;
   maxUnits: number | "unlimited";
@@ -127,9 +183,46 @@ type ApiSkuCatalogEntry = Omit<SkuCatalogEntry, "sku"> & {
   sku: ApiSku;
 };
 
+function normalizeAuthUser(user: ApiAuthUser): AuthUser {
+  return {
+    _id: user._id,
+    emailId: user.email_id,
+    firstName: user.first_name,
+    lastName: user.last_name,
+    userAccess: user.user_access,
+    ...(typeof user.company === "string" ? { company: user.company } : {}),
+    ...(typeof user.company_id === "string"
+      ? { companyId: user.company_id }
+      : {}),
+  };
+}
+
+function normalizeAuthSession(session: ApiAuthSession): AuthSession {
+  return {
+    token: session.token,
+    user: normalizeAuthUser(session.user),
+  };
+}
+
 const zoftwareBaseUrl = "https://api.zoftwarehub.com";
 
 export const api = {
+  login: async (payload: { email: string; password: string }) =>
+    normalizeAuthSession(
+      await request<ApiAuthSession>(
+        "/auth/login",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            email_id: payload.email,
+            password: payload.password,
+          }),
+        },
+        { auth: false },
+      ),
+    ),
+  getCurrentUser: async () =>
+    normalizeAuthUser((await request<AuthMeResponse>("/auth/me")).user),
   getDashboard: async () =>
     normalizeDashboardSnapshot(
       await request<ApiDashboardSnapshot>("/api/dashboard"),

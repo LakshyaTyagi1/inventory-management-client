@@ -1,5 +1,73 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { setStoredAuthSession } from "./auth";
+
+afterEach(() => {
+  sessionStorage.clear();
+});
+
+describe("api auth handling", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  it("does not broadcast auth expiration for unauthenticated login failures", async () => {
+    const dispatchEventSpy = vi.spyOn(window, "dispatchEvent");
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({ message: "Invalid credentials" }),
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+    vi.resetModules();
+
+    const { api } = await import("./api");
+
+    await expect(
+      api.login({ email: "ops@example.com", password: "wrong-password" }),
+    ).rejects.toThrow("Invalid credentials");
+    expect(dispatchEventSpy).not.toHaveBeenCalled();
+  });
+
+  it("broadcasts auth expiration for authenticated 401 responses", async () => {
+    const dispatchEventSpy = vi.spyOn(window, "dispatchEvent");
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({ message: "Session expired" }),
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+    vi.resetModules();
+    setStoredAuthSession({
+      token: "inventory-token",
+      user: {
+        _id: "user-1",
+        emailId: "ops@example.com",
+        firstName: "Inventory",
+        lastName: "Operator",
+        userAccess: "INVENTORY",
+      },
+    });
+
+    const { api } = await import("./api");
+
+    await expect(api.getDashboard()).rejects.toThrow("Session expired");
+    expect(dispatchEventSpy).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:4000/api/dashboard",
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          authorization: "Bearer inventory-token",
+        }),
+      }),
+    );
+  });
+});
+
 describe("api.searchProducts", () => {
   afterEach(() => {
     vi.restoreAllMocks();
