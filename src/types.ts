@@ -122,12 +122,12 @@ export type SkuCatalogEntry = {
 
 export type AuthUser = {
   _id: string;
-  email_id: string;
-  first_name: string;
-  last_name: string;
-  user_access: string;
+  emailId: string;
+  firstName: string;
+  lastName: string;
+  userAccess: string;
   company?: string;
-  company_id?: string;
+  companyId?: string;
 };
 
 export type AuthSession = {

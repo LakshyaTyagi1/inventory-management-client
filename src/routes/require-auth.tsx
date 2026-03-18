@@ -21,13 +21,18 @@ function AuthLoadingScreen() {
 export function RequireAuth({ children }: PropsWithChildren) {
   const location = useLocation();
   const { isInitializing, session } = useAuth();
+  const redirectTarget = {
+    pathname: location.pathname,
+    search: location.search,
+    hash: location.hash,
+  };
 
   if (isInitializing) {
     return <AuthLoadingScreen />;
   }
 
   if (!session) {
-    return <Navigate to="/login" replace state={{ from: location }} />;
+    return <Navigate to="/login" replace state={{ from: redirectTarget }} />;
   }
 
   return children;

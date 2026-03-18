@@ -18,10 +18,10 @@ describe("app", () => {
       token: "inventory-token",
       user: {
         _id: "user-1",
-        email_id: "ops@example.com",
-        first_name: "Inventory",
-        last_name: "Operator",
-        user_access: "INVENTORY",
+        emailId: "ops@example.com",
+        firstName: "Inventory",
+        lastName: "Operator",
+        userAccess: "INVENTORY",
       },
     });
     vi.stubGlobal(

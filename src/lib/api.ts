@@ -1,4 +1,5 @@
 import type {
+  AuthSession,
   AuthUser,
   DashboardSnapshot,
   Plan,
@@ -19,22 +20,22 @@ type RequestOptions = {
 
 function buildHeaders(
   initHeaders?: HeadersInit,
-  options?: RequestOptions,
-): Record<string, string> {
+  authToken?: string | null,
+): { hasAuthorization: boolean; headers: Record<string, string> } {
   const headers = new Headers(initHeaders);
 
   if (!headers.has("content-type")) {
     headers.set("content-type", "application/json");
   }
 
-  if (options?.auth !== false) {
-    const token = getAccessToken();
-    if (token) {
-      headers.set("authorization", `Bearer ${token}`);
-    }
+  if (authToken) {
+    headers.set("authorization", `Bearer ${authToken}`);
   }
 
-  return Object.fromEntries(headers.entries());
+  return {
+    hasAuthorization: headers.has("authorization"),
+    headers: Object.fromEntries(headers.entries()),
+  };
 }
 
 async function request<T>(
@@ -42,12 +43,15 @@ async function request<T>(
   init?: RequestInit,
   options?: RequestOptions,
 ): Promise<T> {
+  const authToken = options?.auth === false ? null : getAccessToken();
+  const { hasAuthorization, headers } = buildHeaders(init?.headers, authToken);
+
   const response = await fetch(`${apiBaseUrl}${path}`, {
     ...init,
-    headers: buildHeaders(init?.headers, options),
+    headers,
   });
 
-  if (response.status === 401) {
+  if (response.status === 401 && hasAuthorization) {
     dispatchAuthExpired();
   }
 
@@ -138,14 +142,24 @@ export type CatalogEntryResponse = {
   sku: Sku;
 };
 
-type AuthLoginResponse = {
+type ApiAuthUser = {
+  _id: string;
+  email_id: string;
+  first_name: string;
+  last_name: string;
+  user_access: string;
+  company?: string;
+  company_id?: string;
+};
+
+type ApiAuthSession = {
   token: string;
-  user: AuthUser;
+  user: ApiAuthUser;
 };
 
 type AuthMeResponse = {
   authType: "user";
-  user: AuthUser;
+  user: ApiAuthUser;
 };
 
 type ApiPurchaseConstraints = {
@@ -169,19 +183,46 @@ type ApiSkuCatalogEntry = Omit<SkuCatalogEntry, "sku"> & {
   sku: ApiSku;
 };
 
+function normalizeAuthUser(user: ApiAuthUser): AuthUser {
+  return {
+    _id: user._id,
+    emailId: user.email_id,
+    firstName: user.first_name,
+    lastName: user.last_name,
+    userAccess: user.user_access,
+    ...(typeof user.company === "string" ? { company: user.company } : {}),
+    ...(typeof user.company_id === "string"
+      ? { companyId: user.company_id }
+      : {}),
+  };
+}
+
+function normalizeAuthSession(session: ApiAuthSession): AuthSession {
+  return {
+    token: session.token,
+    user: normalizeAuthUser(session.user),
+  };
+}
+
 const zoftwareBaseUrl = "https://api.zoftwarehub.com";
 
 export const api = {
-  login: (payload: { email_id: string; password: string }) =>
-    request<AuthLoginResponse>(
-      "/auth/login",
-      {
-        method: "POST",
-        body: JSON.stringify(payload),
-      },
-      { auth: false },
+  login: async (payload: { email: string; password: string }) =>
+    normalizeAuthSession(
+      await request<ApiAuthSession>(
+        "/auth/login",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            email_id: payload.email,
+            password: payload.password,
+          }),
+        },
+        { auth: false },
+      ),
     ),
-  getCurrentUser: async () => (await request<AuthMeResponse>("/auth/me")).user,
+  getCurrentUser: async () =>
+    normalizeAuthUser((await request<AuthMeResponse>("/auth/me")).user),
   getDashboard: async () =>
     normalizeDashboardSnapshot(
       await request<ApiDashboardSnapshot>("/api/dashboard"),

@@ -1,22 +1,15 @@
 import { type FormEvent, useState } from "react";
-import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Navigate, useLocation, useNavigate, type To } from "react-router-dom";
 import { BoxesIcon, InfoIcon } from "lucide-react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { Button } from "@/components/ui/button";
-import {
-  Field,
-  FieldDescription,
-  FieldGroup,
-  FieldLabel,
-} from "@/components/ui/field";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
 
 type RedirectState = {
-  from?: {
-    pathname?: string;
-  };
+  from?: To;
 };
 
 export function LoginPage() {
@@ -33,8 +26,7 @@ export function LoginPage() {
     return <Navigate to="/" replace />;
   }
 
-  const redirectTo =
-    (location.state as RedirectState | null)?.from?.pathname ?? "/";
+  const redirectTo = (location.state as RedirectState | null)?.from ?? "/";
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -43,7 +35,7 @@ export function LoginPage() {
 
     try {
       const nextSession = await api.login({
-        email_id: email.trim(),
+        email: email.trim(),
         password,
       });
       login(nextSession);
