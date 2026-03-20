@@ -88,6 +88,7 @@ describe("app", () => {
 
     expect(getSidebarLink("/")).toHaveAttribute("data-active", "true");
     expect(getSidebarLink("/view")).not.toHaveAttribute("data-active");
+    expect(getSidebarLink("/audit")).toBeUndefined();
   });
 
   it("renders the new view page route", async () => {
@@ -100,7 +101,6 @@ describe("app", () => {
       ).toBeInTheDocument();
     });
 
-    expect(screen.getByText(/watch list/i)).toBeInTheDocument();
     expect(getSidebarLink("/view")).toHaveAttribute("data-active", "true");
     expect(getSidebarLink("/")).not.toHaveAttribute("data-active");
   });

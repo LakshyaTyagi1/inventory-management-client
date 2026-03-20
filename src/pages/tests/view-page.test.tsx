@@ -278,11 +278,44 @@ describe("view page", () => {
         name: /edit inventory for slack india/i,
       }),
     ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/recent audit activity/i),
+    ).not.toBeInTheDocument();
 
     const viewAllLinks = screen.getAllByRole("link", { name: /view all/i });
     expect(viewAllLinks).toHaveLength(2);
     expect(viewAllLinks[0]).toHaveAttribute("href", "/view/billing-options");
     expect(viewAllLinks[1]).toHaveAttribute("href", "/view/inventory-pools");
+  });
+
+  it("hides inventory pools on the view page when there are no tracked pools", () => {
+    const noTrackedPoolsSnapshot: DashboardSnapshot = {
+      ...snapshot,
+      skus: [
+        {
+          ...snapshot.skus[0]!,
+          purchaseConstraints: {
+            minUnits: 1,
+          },
+        },
+        ...snapshot.skus.slice(1),
+      ],
+      inventoryPools: [],
+    };
+
+    renderViewRoute("/view", noTrackedPoolsSnapshot);
+
+    expect(
+      screen.queryByText(/showing 0 recent tracked pools out of 0/i),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/billing option(?:s)? use(?:s)? unlimited inventory/i),
+    ).not.toBeInTheDocument();
+    expect(screen.getAllByText(/^inventory pools$/i)).toHaveLength(1);
+
+    const viewAllLinks = screen.getAllByRole("link", { name: /view all/i });
+    expect(viewAllLinks).toHaveLength(1);
+    expect(viewAllLinks[0]).toHaveAttribute("href", "/view/billing-options");
   });
 
   it("edits offer pricing from the view dialog", async () => {

@@ -1,11 +1,4 @@
-import type {
-  AuditLog,
-  InventoryPool,
-  Plan,
-  PricePerUnit,
-  Product,
-  Sku,
-} from "@/types";
+import type { InventoryPool, Plan, PricePerUnit, Product, Sku } from "@/types";
 
 export type ViewSetupEntry = {
   sku: Sku;
@@ -44,5 +37,3 @@ export type InventoryDialogState = {
   region: string;
   canSave: boolean;
 };
-
-export type RecentAuditEntry = AuditLog;

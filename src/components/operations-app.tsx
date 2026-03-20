@@ -13,7 +13,6 @@ import {
   LogOutIcon,
   PackagePlusIcon,
   RefreshCwIcon,
-  ShieldCheckIcon,
   ShoppingCartIcon,
 } from "lucide-react";
 
@@ -96,12 +95,6 @@ const navigationItems = [
     icon: ShoppingCartIcon,
     subtitle: "partner records",
   },
-  {
-    href: "/audit",
-    label: "Audit",
-    icon: ShieldCheckIcon,
-    subtitle: "change history",
-  },
 ] as const;
 
 type RouteMeta = {
@@ -128,7 +121,7 @@ const routeMeta: Record<string, RouteMeta> = {
   "/view": {
     title: "View created items",
     description:
-      "Browse the billing options, inventory pools, and recent activity already in the system.",
+      "Browse the billing options and inventory pools already in the system.",
   },
   "/view/billing-options": {
     title: "All billing options",
@@ -143,7 +136,7 @@ const routeMeta: Record<string, RouteMeta> = {
   "/inventory": {
     title: "View created items",
     description:
-      "Browse the billing options, inventory pools, and recent activity already in the system.",
+      "Browse the billing options and inventory pools already in the system.",
   },
   "/audit": {
     title: "Audit history",

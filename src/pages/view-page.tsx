@@ -1,7 +1,5 @@
 import { BillingOptionsCard } from "@/components/view-page/billing-options-card";
 import { InventoryPoolsCard } from "@/components/view-page/inventory-pools-card";
-import { LowStockWatchCard } from "@/components/view-page/low-stock-watch-card";
-import { RecentAuditCard } from "@/components/view-page/recent-audit-card";
 import { ViewSummaryMetrics } from "@/components/view-page/view-summary-metrics";
 import { useViewWorkspace } from "@/components/view-page/view-workspace";
 import { isStockTrackingEnabled } from "@/lib/billing-option";
@@ -23,11 +21,6 @@ export function ViewPage() {
     (entry) => !isStockTrackingEnabled(entry.sku.purchaseConstraints),
   ).length;
 
-  const lowAvailability = inventoryRows
-    .filter((entry) => entry.available <= 2)
-    .slice(0, 4);
-  const latestAudit = snapshot.auditLogs.slice(0, 5);
-
   return (
     <>
       <ViewSummaryMetrics
@@ -38,9 +31,7 @@ export function ViewPage() {
         todaySalesCount={todaySalesCount}
       />
 
-      <LowStockWatchCard entries={lowAvailability} />
-
-      <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <section className="grid gap-4">
         <BillingOptionsCard
           entries={recentBillingEntries}
           description={`Showing ${recentBillingEntries.length} recent billing option${recentBillingEntries.length === 1 ? "" : "s"} out of ${setupEntries.length}.`}
@@ -48,20 +39,20 @@ export function ViewPage() {
           onEditBilling={openBillingDialog}
           onEditInventory={openInventoryDialog}
         />
-        <InventoryPoolsCard
-          rows={recentInventoryRows}
-          description={`Showing ${recentInventoryRows.length} recent tracked pool${recentInventoryRows.length === 1 ? "" : "s"} out of ${inventoryRows.length}.${
-            unlimitedInventoryOfferCount > 0
-              ? ` ${unlimitedInventoryOfferCount} billing option${unlimitedInventoryOfferCount === 1 ? " uses" : "s use"} unlimited inventory.`
-              : ""
-          }`}
-          unlimitedOfferCount={unlimitedInventoryOfferCount}
-          viewAllHref="/view/inventory-pools"
-          onEditInventory={openInventoryDialog}
-        />
+        {inventoryRows.length > 0 ? (
+          <InventoryPoolsCard
+            rows={recentInventoryRows}
+            description={`Showing ${recentInventoryRows.length} recent tracked pool${recentInventoryRows.length === 1 ? "" : "s"} out of ${inventoryRows.length}.${
+              unlimitedInventoryOfferCount > 0
+                ? ` ${unlimitedInventoryOfferCount} billing option${unlimitedInventoryOfferCount === 1 ? " uses" : "s use"} unlimited inventory.`
+                : ""
+            }`}
+            unlimitedOfferCount={unlimitedInventoryOfferCount}
+            viewAllHref="/view/inventory-pools"
+            onEditInventory={openInventoryDialog}
+          />
+        ) : null}
       </section>
-
-      <RecentAuditCard entries={latestAudit} />
     </>
   );
 }
