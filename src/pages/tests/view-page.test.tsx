@@ -1,5 +1,11 @@
 import { act } from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -112,6 +118,7 @@ const snapshot: DashboardSnapshot = {
       code: "jira-standard-gcc",
       region: "GCC",
       seatType: "seat",
+      isBillingDisabled: false,
       pricingOptions: [pricingOption("monthly", "18")],
       purchaseConstraints: {
         minUnits: 1,
@@ -126,6 +133,7 @@ const snapshot: DashboardSnapshot = {
       code: "confluence-premium-india",
       region: "INDIA",
       seatType: "seat",
+      isBillingDisabled: false,
       pricingOptions: [pricingOption("yearly", "120")],
       purchaseConstraints: {
         minUnits: 3,
@@ -140,6 +148,7 @@ const snapshot: DashboardSnapshot = {
       code: "mailchimp-premium-gcc",
       region: "GCC",
       seatType: "seat",
+      isBillingDisabled: false,
       pricingOptions: [
         pricingOption("monthly", "350"),
         pricingOption("yearly", "320"),
@@ -156,6 +165,7 @@ const snapshot: DashboardSnapshot = {
       code: "slack-business-india",
       region: "INDIA",
       seatType: "seat",
+      isBillingDisabled: false,
       pricingOptions: [pricingOption("monthly", "14")],
       purchaseConstraints: {
         maxUnits: 100,
@@ -375,6 +385,51 @@ describe("view page", () => {
           maxUnits: 10,
         },
         activationTimeline: "5 Days",
+        isBillingDisabled: false,
+      });
+    });
+  });
+
+  it("toggles billing disabled from the card header", async () => {
+    const updateSku = vi.spyOn(api, "updateSku").mockResolvedValue({
+      ...snapshot.skus[0]!,
+      isBillingDisabled: true,
+    });
+
+    renderViewRoute();
+
+    const billingSwitch = screen.getByRole("switch", {
+      name: /disable billing for jira standard/i,
+    });
+
+    expect(billingSwitch).toHaveAttribute("aria-checked", "false");
+
+    await act(async () => {
+      fireEvent.click(billingSwitch);
+    });
+
+    expect(billingSwitch).toHaveAttribute("aria-checked", "true");
+
+    await waitFor(() => {
+      expect(updateSku).toHaveBeenCalledWith("sku-1", {
+        code: "jira-standard-gcc",
+        region: "GCC",
+        seatType: "seat",
+        pricingOptions: [
+          {
+            billingCycle: "monthly",
+            amount: "18",
+            currency: "USD",
+            entity: "user",
+            ratePeriod: "monthly",
+          },
+        ],
+        purchaseConstraints: {
+          minUnits: 1,
+          maxUnits: 20,
+        },
+        activationTimeline: "5 Days",
+        isBillingDisabled: true,
       });
     });
   });
@@ -472,7 +527,44 @@ describe("view page", () => {
           maxUnits: 300,
         },
         activationTimeline: "7 Working Days",
+        isBillingDisabled: false,
       });
+    });
+  });
+
+  it("deletes billing from the card footer", async () => {
+    const deleteSku = vi
+      .spyOn(api, "deleteSku")
+      .mockResolvedValue(snapshot.skus[0]!);
+
+    renderViewRoute();
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: /delete billing for jira standard/i,
+        }),
+      );
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("alertdialog", { name: /delete billing option/i }),
+      ).toBeInTheDocument();
+    });
+
+    await act(async () => {
+      fireEvent.click(
+        within(
+          screen.getByRole("alertdialog", {
+            name: /delete billing option/i,
+          }),
+        ).getByRole("button", { name: /^delete billing$/i }),
+      );
+    });
+
+    await waitFor(() => {
+      expect(deleteSku).toHaveBeenCalledWith("sku-1");
     });
   });
 

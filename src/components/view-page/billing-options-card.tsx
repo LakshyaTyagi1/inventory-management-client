@@ -25,14 +25,23 @@ export function BillingOptionsCard({
   entries,
   description,
   viewAllHref,
+  loading,
   onEditBilling,
   onEditInventory,
+  onSetBillingDisabled,
+  onDeleteBilling,
 }: {
   entries: ViewSetupEntry[];
   description: string;
   viewAllHref?: string;
+  loading: boolean;
   onEditBilling: (skuId: string) => void;
   onEditInventory: (input: { skuId: string; poolId?: string }) => void;
+  onSetBillingDisabled: (
+    entry: ViewSetupEntry,
+    isBillingDisabled: boolean,
+  ) => Promise<boolean>;
+  onDeleteBilling: (entry: ViewSetupEntry) => Promise<boolean>;
 }) {
   return (
     <Card className="shadow-none">
@@ -66,8 +75,11 @@ export function BillingOptionsCard({
               <BillingOptionTile
                 key={entry.sku._id}
                 entry={entry}
+                loading={loading}
                 onEditBilling={onEditBilling}
                 onEditInventory={onEditInventory}
+                onSetBillingDisabled={onSetBillingDisabled}
+                onDeleteBilling={onDeleteBilling}
               />
             ))}
           </div>

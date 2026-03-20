@@ -14,8 +14,14 @@ import {
 } from "@/components/ui/empty";
 
 export function BillingOptionsPage() {
-  const { setupEntries, openBillingDialog, openInventoryDialog } =
-    useViewWorkspace();
+  const {
+    setupEntries,
+    loading,
+    openBillingDialog,
+    openInventoryDialog,
+    setBillingDisabled,
+    deleteBilling,
+  } = useViewWorkspace();
   const [query, setQuery] = useState("");
 
   const search = useMemo(
@@ -73,8 +79,11 @@ export function BillingOptionsPage() {
             <BillingOptionTile
               key={entry.sku._id}
               entry={entry}
+              loading={loading}
               onEditBilling={openBillingDialog}
               onEditInventory={openInventoryDialog}
+              onSetBillingDisabled={setBillingDisabled}
+              onDeleteBilling={deleteBilling}
             />
           ))}
         </section>

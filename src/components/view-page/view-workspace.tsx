@@ -48,6 +48,11 @@ type ViewWorkspaceContextValue = {
   todaySalesCount: number;
   openBillingDialog: (skuId: string) => void;
   openInventoryDialog: (input: InventoryDialogTarget) => void;
+  setBillingDisabled: (
+    entry: ViewSetupEntry,
+    isBillingDisabled: boolean,
+  ) => Promise<boolean>;
+  deleteBilling: (entry: ViewSetupEntry) => Promise<boolean>;
 };
 
 export function ViewWorkspace({
@@ -249,6 +254,27 @@ export function ViewWorkspace({
 
   const closeBillingDialog = () => setBillingDialogSkuId(null);
   const closeInventoryDialog = () => setInventoryDialogTarget(null);
+  const setBillingDisabled = (
+    entry: ViewSetupEntry,
+    isBillingDisabled: boolean,
+  ) =>
+    runAction(
+      () =>
+        api.updateSku(entry.sku._id, {
+          code: entry.sku.code,
+          region: entry.sku.region,
+          seatType: entry.sku.seatType,
+          pricingOptions: normalizePricingOptions(entry.sku.pricingOptions),
+          purchaseConstraints: entry.sku.purchaseConstraints,
+          activationTimeline: entry.sku.activationTimeline,
+          isBillingDisabled,
+        }),
+      isBillingDisabled
+        ? "Billing option disabled."
+        : "Billing option enabled.",
+    );
+  const deleteBilling = (entry: ViewSetupEntry) =>
+    runAction(() => api.deleteSku(entry.sku._id), "Billing option deleted.");
 
   return (
     <>
@@ -261,6 +287,8 @@ export function ViewWorkspace({
           todaySalesCount,
           openBillingDialog: setBillingDialogSkuId,
           openInventoryDialog: setInventoryDialogTarget,
+          setBillingDisabled,
+          deleteBilling,
         }}
       />
 
@@ -297,6 +325,7 @@ export function ViewWorkspace({
                 pricingOptions: normalizedBillingPricingOptions,
                 purchaseConstraints: normalizedBillingPurchaseConstraints,
                 activationTimeline: activationTimeline.trim() || undefined,
+                isBillingDisabled: activeBillingEntry.sku.isBillingDisabled,
               }),
             "Regional offer updated.",
           ).then((ok) => {

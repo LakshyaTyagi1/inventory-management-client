@@ -13,6 +13,8 @@ export function ViewPage() {
     todaySalesCount,
     openBillingDialog,
     openInventoryDialog,
+    setBillingDisabled,
+    deleteBilling,
   } = useViewWorkspace();
 
   const recentBillingEntries = setupEntries.slice(0, 3);
@@ -36,8 +38,11 @@ export function ViewPage() {
           entries={recentBillingEntries}
           description={`Showing ${recentBillingEntries.length} recent billing option${recentBillingEntries.length === 1 ? "" : "s"} out of ${setupEntries.length}.`}
           viewAllHref="/view/billing-options"
+          loading={loading}
           onEditBilling={openBillingDialog}
           onEditInventory={openInventoryDialog}
+          onSetBillingDisabled={setBillingDisabled}
+          onDeleteBilling={deleteBilling}
         />
         {inventoryRows.length > 0 ? (
           <InventoryPoolsCard

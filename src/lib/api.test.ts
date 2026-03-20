@@ -153,6 +153,7 @@ describe("api sku response normalization", () => {
             code: "pipedrive-starter-pack-india",
             region: "INDIA",
             seatType: "seat",
+            isBillingDisabled: true,
             pricingOptions: [
               {
                 billingCycle: "monthly",
@@ -205,6 +206,7 @@ describe("api sku response normalization", () => {
           code: "pipedrive-starter-pack-india",
           region: "INDIA",
           seatType: "seat",
+          isBillingDisabled: true,
           pricingOptions: [
             {
               billingCycle: "monthly",
@@ -289,6 +291,7 @@ describe("api sku response normalization", () => {
     expect(results.skus[0]!.purchaseConstraints).toEqual({
       minUnits: 1,
     });
+    expect(results.skus[0]!.isBillingDisabled).toBe(false);
     expect(results.skus[0]!.pricingOptions).toEqual([
       {
         billingCycle: "monthly",
@@ -300,6 +303,54 @@ describe("api sku response normalization", () => {
         discountedAmount: "90.44",
       },
     ]);
+  });
+
+  it("deletes skus through the sku endpoint", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        _id: "sku-1",
+        planId: "plan-1",
+        code: "pipedrive-starter-pack-india",
+        region: "INDIA",
+        seatType: "seat",
+        pricingOptions: [
+          {
+            billingCycle: "monthly",
+            amount: "3060",
+            currency: "INR",
+            entity: "user",
+            ratePeriod: "month",
+          },
+        ],
+        purchaseConstraints: {
+          minUnits: 1,
+          maxUnits: 25,
+        },
+        isBillingDisabled: false,
+        createdAt: "2026-03-16T00:00:00.000Z",
+      }),
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+    vi.resetModules();
+
+    const { api } = await import("./api");
+    const result = await api.deleteSku("sku-1");
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:4000/api/skus/sku-1",
+      {
+        method: "DELETE",
+        headers: {
+          "content-type": "application/json",
+        },
+      },
+    );
+    expect(result).toMatchObject({
+      _id: "sku-1",
+      isBillingDisabled: false,
+    });
   });
 
   it("loads sales records from the sales endpoint", async () => {

@@ -131,6 +131,7 @@ function normalizeSaleListEntry(entry: SaleListEntry): SaleListEntry {
 function normalizeSku(sku: ApiSku | Sku): Sku {
   return {
     ...sku,
+    isBillingDisabled: Boolean(sku.isBillingDisabled),
     pricingOptions: sku.pricingOptions.map(normalizePricingOption),
     purchaseConstraints: normalizePurchaseConstraints(sku.purchaseConstraints),
   };
@@ -214,6 +215,7 @@ type ApiPurchaseConstraints = {
 
 type ApiSku = Omit<Sku, "purchaseConstraints"> & {
   purchaseConstraints?: ApiPurchaseConstraints;
+  isBillingDisabled?: boolean;
 };
 
 type ApiCatalogEntryResponse = Omit<CatalogEntryResponse, "sku"> & {
@@ -357,11 +359,16 @@ export const api = {
       pricingOptions: PricePerUnit[];
       purchaseConstraints?: PurchaseConstraints;
       activationTimeline?: string;
+      isBillingDisabled?: boolean;
     },
   ) =>
     request<ApiSku>(`/api/skus/${skuId}`, {
       method: "PATCH",
       body: JSON.stringify(payload),
+    }).then(normalizeSku),
+  deleteSku: (skuId: string) =>
+    request<ApiSku>(`/api/skus/${skuId}`, {
+      method: "DELETE",
     }).then(normalizeSku),
   createInventoryPool: (payload: { skuId: string; totalQuantity: number }) =>
     request("/api/inventory-pools", {

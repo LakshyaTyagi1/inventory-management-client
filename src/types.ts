@@ -54,6 +54,7 @@ export type Sku = {
   pricingOptions: PricePerUnit[];
   purchaseConstraints?: PurchaseConstraints;
   activationTimeline?: string;
+  isBillingDisabled?: boolean;
   createdAt: string;
 };
 
