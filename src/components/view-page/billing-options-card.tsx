@@ -61,7 +61,7 @@ export function BillingOptionsCard({
             </EmptyHeader>
           </Empty>
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
             {entries.map((entry) => (
               <BillingOptionTile
                 key={entry.sku._id}
