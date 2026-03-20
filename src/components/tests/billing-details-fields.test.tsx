@@ -3,7 +3,10 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { BillingDetailsFields } from "@/components/billing-details-fields";
-import { applyPricingDetailsChange } from "@/lib/billing-option";
+import {
+  applyPricingDetailsChange,
+  syncPricingDetailsByBillingCycles,
+} from "@/lib/billing-option";
 import type { BillingCycle, PricingDetailsByCycle } from "@/types";
 
 function buildPricingDetailsByCycle(): PricingDetailsByCycle {
@@ -183,6 +186,75 @@ describe("BillingDetailsFields", () => {
     ).toHaveValue("144");
   });
 
+  it("seeds yearly discount from monthly while both billing cycles are selected", () => {
+    render(<ControlledBillingDetailsFields />);
+
+    fireEvent.change(
+      screen.getByRole("textbox", { name: /monthly discount percentage/i }),
+      {
+        target: { value: "10" },
+      },
+    );
+
+    expect(
+      screen.getByRole("textbox", { name: /yearly discount percentage/i }),
+    ).toHaveValue("10");
+    expect(
+      screen.getByRole("textbox", { name: /yearly discounted price/i }),
+    ).toHaveValue("162");
+  });
+
+  it("keeps yearly discount editable after the initial monthly seed", () => {
+    render(<ControlledBillingDetailsFields />);
+
+    fireEvent.change(
+      screen.getByRole("textbox", { name: /monthly discount percentage/i }),
+      {
+        target: { value: "10" },
+      },
+    );
+
+    fireEvent.change(
+      screen.getByRole("textbox", { name: /yearly discount percentage/i }),
+      {
+        target: { value: "15" },
+      },
+    );
+
+    fireEvent.change(
+      screen.getByRole("textbox", { name: /monthly discount percentage/i }),
+      {
+        target: { value: "20" },
+      },
+    );
+
+    expect(
+      screen.getByRole("textbox", { name: /monthly discounted price/i }),
+    ).toHaveValue("14.4");
+    expect(
+      screen.getByRole("textbox", { name: /yearly discount percentage/i }),
+    ).toHaveValue("15");
+    expect(
+      screen.getByRole("textbox", { name: /yearly discounted price/i }),
+    ).toHaveValue("153");
+  });
+
+  it("seeds yearly discount when yearly is added after monthly already has one", () => {
+    const pricingDetailsByCycle = buildPricingDetailsByCycle();
+    pricingDetailsByCycle.yearly.amount = "";
+    pricingDetailsByCycle.monthly.discountPercentage = "10";
+    pricingDetailsByCycle.monthly.discountedAmount = "16.2";
+
+    const nextPricingDetailsByCycle = syncPricingDetailsByBillingCycles({
+      billingCycles: ["monthly", "yearly"],
+      pricingDetailsByCycle,
+    });
+
+    expect(nextPricingDetailsByCycle.yearly.amount).toBe("216");
+    expect(nextPricingDetailsByCycle.yearly.discountPercentage).toBe("10");
+    expect(nextPricingDetailsByCycle.yearly.discountedAmount).toBe("194.4");
+  });
+
   it("calculates the discounted price from the entered discount percentage", () => {
     render(
       <ControlledBillingDetailsFields initialBillingCycles={["monthly"]} />,
@@ -198,6 +270,40 @@ describe("BillingDetailsFields", () => {
     expect(
       screen.getByRole("textbox", { name: /monthly discounted price/i }),
     ).toHaveValue("14.38");
+  });
+
+  it("lets operators clear an existing discount percentage before typing a new one", () => {
+    render(
+      <ControlledBillingDetailsFields initialBillingCycles={["monthly"]} />,
+    );
+
+    const discountPercentageInput = screen.getByRole("textbox", {
+      name: /monthly discount percentage/i,
+    });
+    const discountedPriceInput = screen.getByRole("textbox", {
+      name: /monthly discounted price/i,
+    });
+
+    fireEvent.change(discountPercentageInput, {
+      target: { value: "15" },
+    });
+
+    expect(discountPercentageInput).toHaveValue("15");
+    expect(discountedPriceInput).toHaveValue("15.3");
+
+    fireEvent.change(discountPercentageInput, {
+      target: { value: "" },
+    });
+
+    expect(discountPercentageInput).toHaveValue("");
+    expect(discountedPriceInput).toHaveValue("");
+
+    fireEvent.change(discountPercentageInput, {
+      target: { value: "25" },
+    });
+
+    expect(discountPercentageInput).toHaveValue("25");
+    expect(discountedPriceInput).toHaveValue("13.5");
   });
 
   it("calculates the discount percentage from the entered discounted price", () => {

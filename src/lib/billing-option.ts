@@ -170,6 +170,18 @@ function syncDiscountDetails(
     };
   }
 
+  if (
+    source === "discountPercentage" &&
+    normalizedDiscountPercentage.length === 0
+  ) {
+    return {
+      ...pricingDetails,
+      amount: normalizedAmount,
+      discountPercentage: "",
+      discountedAmount: "",
+    };
+  }
+
   if (!normalizedDiscountPercentage && normalizedDiscountedAmount) {
     const nextDiscountPercentage = calculateDiscountPercentage(
       normalizedAmount,
@@ -195,6 +207,59 @@ function syncDiscountDetails(
         )
       : "",
   };
+}
+
+function isDiscountUnset(
+  pricingDetails: Pick<
+    PricingDetails,
+    "discountPercentage" | "discountedAmount"
+  >,
+): boolean {
+  return (
+    trimOrEmpty(pricingDetails.discountPercentage).length === 0 &&
+    trimOrEmpty(pricingDetails.discountedAmount).length === 0
+  );
+}
+
+function sameDiscountState(
+  left: Pick<PricingDetails, "discountPercentage" | "discountedAmount">,
+  right: Pick<PricingDetails, "discountPercentage" | "discountedAmount">,
+): boolean {
+  const normalizedLeftDiscountPercentage =
+    normalizePercentageValue(left.discountPercentage) ??
+    trimOrEmpty(left.discountPercentage);
+  const normalizedRightDiscountPercentage =
+    normalizePercentageValue(right.discountPercentage) ??
+    trimOrEmpty(right.discountPercentage);
+  const normalizedLeftDiscountedAmount =
+    normalizeMoneyAmount(left.discountedAmount) ??
+    trimOrEmpty(left.discountedAmount);
+  const normalizedRightDiscountedAmount =
+    normalizeMoneyAmount(right.discountedAmount) ??
+    trimOrEmpty(right.discountedAmount);
+
+  return (
+    normalizedLeftDiscountPercentage === normalizedRightDiscountPercentage &&
+    normalizedLeftDiscountedAmount === normalizedRightDiscountedAmount
+  );
+}
+
+function buildPricingDetailsWithMirroredDiscount(
+  source: Pick<PricingDetails, "discountPercentage">,
+  target: PricingDetails,
+): PricingDetails {
+  const normalizedDiscountPercentage =
+    normalizePercentageValue(source.discountPercentage) ??
+    trimOrEmpty(source.discountPercentage);
+
+  return syncDiscountDetails(
+    {
+      ...target,
+      discountPercentage: normalizedDiscountPercentage,
+      discountedAmount: "",
+    },
+    "discountPercentage",
+  );
 }
 
 function buildDiscountFields(
@@ -238,7 +303,9 @@ function hasValidDiscountFields(
   }
 
   const normalizedDiscountedAmount =
-    normalizeMoneyAmount(rawDiscountedAmount ?? "") ?? rawDiscountedAmount ?? "";
+    normalizeMoneyAmount(rawDiscountedAmount ?? "") ??
+    rawDiscountedAmount ??
+    "";
 
   return Boolean(
     calculateDiscountPercentage(
@@ -384,6 +451,17 @@ export function syncPricingDetailsByBillingCycles(input: {
         amount: nextYearlyAmount,
       });
     }
+
+    if (
+      !isDiscountUnset(nextPricingDetailsByCycle.monthly) &&
+      isDiscountUnset(nextPricingDetailsByCycle.yearly)
+    ) {
+      nextPricingDetailsByCycle.yearly =
+        buildPricingDetailsWithMirroredDiscount(
+          nextPricingDetailsByCycle.monthly,
+          nextPricingDetailsByCycle.yearly,
+        );
+    }
   }
 
   for (const billingCycle of selectedBillingCycles) {
@@ -463,6 +541,30 @@ export function applyPricingDetailsChange(input: {
         ...nextPricingDetailsByCycle.yearly,
         amount: nextAutoYearlyAmount,
       });
+    }
+  }
+
+  if (
+    (input.field === "discountPercentage" ||
+      input.field === "discountedAmount") &&
+    input.billingCycle === "monthly" &&
+    selectedBillingCycles.includes("yearly")
+  ) {
+    const previousAutoYearlyDiscount = buildPricingDetailsWithMirroredDiscount(
+      syncDiscountDetails(input.pricingDetailsByCycle.monthly),
+      input.pricingDetailsByCycle.yearly,
+    );
+    const currentYearlyDetails = input.pricingDetailsByCycle.yearly;
+
+    if (
+      isDiscountUnset(currentYearlyDetails) ||
+      sameDiscountState(currentYearlyDetails, previousAutoYearlyDiscount)
+    ) {
+      nextPricingDetailsByCycle.yearly =
+        buildPricingDetailsWithMirroredDiscount(
+          nextPricingDetailsByCycle.monthly,
+          nextPricingDetailsByCycle.yearly,
+        );
     }
   }
 
