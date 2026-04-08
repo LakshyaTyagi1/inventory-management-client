@@ -305,6 +305,72 @@ describe("api sku response normalization", () => {
     ]);
   });
 
+  it("loads a single sku by id", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        _id: "sku-1",
+        planId: "plan-1",
+        code: "pipedrive-starter-pack-india",
+        region: "INDIA",
+        seatType: "seat",
+        pricingOptions: [
+          {
+            billingCycle: "monthly",
+            amount: "3060.125",
+            currency: "inr",
+            entity: "user",
+            ratePeriod: "month",
+          },
+        ],
+        purchaseConstraints: {
+          minUnits: 1,
+          maxUnits: "unlimited",
+        },
+        activationTimeline: "5",
+        isBillingDisabled: false,
+        createdAt: "2026-03-16T00:00:00.000Z",
+      }),
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+    vi.resetModules();
+
+    const { api } = await import("./api");
+    const result = await api.getSku("sku-1");
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:4000/api/skus/sku-1",
+      {
+        headers: {
+          "content-type": "application/json",
+        },
+      },
+    );
+    expect(result).toEqual({
+      _id: "sku-1",
+      planId: "plan-1",
+      code: "pipedrive-starter-pack-india",
+      region: "INDIA",
+      seatType: "seat",
+      pricingOptions: [
+        {
+          billingCycle: "monthly",
+          amount: "3060.13",
+          currency: "INR",
+          entity: "user",
+          ratePeriod: "month",
+        },
+      ],
+      purchaseConstraints: {
+        minUnits: 1,
+      },
+      activationTimeline: "5",
+      isBillingDisabled: false,
+      createdAt: "2026-03-16T00:00:00.000Z",
+    });
+  });
+
   it("deletes skus through the sku endpoint", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,

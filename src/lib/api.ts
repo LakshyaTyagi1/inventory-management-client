@@ -280,6 +280,8 @@ export const api = {
     (await request<ApiSkuCatalogEntry[]>("/api/skus")).map(
       normalizeSkuCatalogEntry,
     ),
+  getSku: async (skuId: string) =>
+    request<ApiSku>(`/api/skus/${skuId}`).then(normalizeSku),
   searchProducts: async (
     query: string,
     limit = 6,
