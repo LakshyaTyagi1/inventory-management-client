@@ -75,7 +75,7 @@ export const billingCycleOptions: Array<{
   { value: "quarterly", label: "Quarterly", purchaseType: "subscription" },
   {
     value: "half_yearly",
-    label: "Half-yearly",
+    label: "Half Yearly",
     purchaseType: "subscription",
   },
   { value: "yearly", label: "Yearly", purchaseType: "subscription" },
@@ -486,9 +486,7 @@ export function suggestedBillingPeriod(
   if (normalizedPeriod.startsWith("quarter")) return "quarterly";
   if (
     normalizedPeriod.startsWith("half") ||
-    normalizedPeriod === "semiannual" ||
-    normalizedPeriod === "semi-annually" ||
-    normalizedPeriod === "semi-annually" ||
+    normalizedPeriod.startsWith("semi") ||
     normalizedPeriod.includes("6 month")
   ) {
     return "half_yearly";

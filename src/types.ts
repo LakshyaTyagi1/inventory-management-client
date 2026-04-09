@@ -11,7 +11,7 @@ export type PurchasedBillingCycle =
   | "unknown";
 export type SkuPurchaseType = "subscription" | "one_time";
 export type PurchaseType = "subscription" | "one_time" | "unknown";
-export type SaleFulfillmentMode = "license_key" | "email_based";
+export type SaleFulfillmentMode = "email_based";
 export type ActivationStatus = "pending" | "processing" | "completed" | "failed";
 export type NotificationStatus = "not_queued" | "queued" | "failed";
 

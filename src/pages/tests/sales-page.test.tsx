@@ -598,7 +598,7 @@ describe("sales page", () => {
           customerEmail: "nadia@example.com",
           purchaseType: "subscription",
           billingCyclePurchased: "monthly",
-          fulfillmentMode: "license_key",
+          fulfillmentMode: "email_based",
           accessStartDate: "2026-04-01T00:00:00.000Z",
           accessEndDate: "2026-05-01T00:00:00.000Z",
           nextRenewalDate: "2026-05-01T00:00:00.000Z",

@@ -1,4 +1,4 @@
-﻿import { Fragment, useDeferredValue, useMemo, useState } from "react";
+import { Fragment, useDeferredValue, useMemo, useState } from "react";
 import Fuse from "fuse.js";
 import { ShoppingCartIcon } from "lucide-react";
 
@@ -47,6 +47,8 @@ import type {
   Sku,
 } from "@/types";
 
+const MAX_LICENSE_DOCUMENT_BYTES = 10485760;
+
 function encodeBase64(buffer: ArrayBuffer) {
   const bytes = new Uint8Array(buffer);
   let binary = "";
@@ -62,14 +64,6 @@ function encodeBase64(buffer: ArrayBuffer) {
 
 function formatRecord(record?: Record<string, string>) {
   return record ? Object.entries(record) : [];
-}
-
-function formatMinimumUnits(value?: number) {
-  return typeof value === "number" ? value.toString() : "Not set";
-}
-
-function formatMaximumUnits(value?: number) {
-  return typeof value === "number" ? value.toString() : "Unlimited";
 }
 
 function getPurchaseTypeLabel(sku: Sku) {
@@ -136,6 +130,10 @@ function getPurchasedBillingCycleLabel(value?: PurchasedBillingCycle) {
     return "One Time";
   }
 
+  if (value === "half_yearly") {
+    return "Half yearly";
+  }
+
   if (value === "custom") {
     return "Custom";
   }
@@ -152,10 +150,6 @@ function getPurchasedBillingCycleLabel(value?: PurchasedBillingCycle) {
 }
 
 function getFulfillmentModeLabel(value?: SaleFulfillmentMode) {
-  if (value === "license_key") {
-    return "License key";
-  }
-
   if (value === "email_based") {
     return "Email based";
   }
@@ -329,6 +323,10 @@ export function SalesPage({
         let licenseDocument = activationPayload.licenseDocument;
 
         if (licenseDocumentFile) {
+          if (licenseDocumentFile.size > MAX_LICENSE_DOCUMENT_BYTES) {
+            throw new Error("License document exceeds size limit.");
+          }
+
           licenseDocument = {
             fileName: licenseDocumentFile.name,
             uploadedAt: activationPayload.licenseDocument?.uploadedAt,
@@ -453,11 +451,12 @@ export function SalesPage({
                   const activationStatusLabel = getActivationStatusLabel(
                     entry.activation?.activationStatus,
                   );
-                  const notificationStatusSummary = getNotificationStatusSummary(
-                    entry.activation?.notificationStatus,
-                    entry.activation?.notificationQueuedAt,
-                    entry.activation?.updatedAt,
-                  );
+                  const notificationStatusSummary =
+                    getNotificationStatusSummary(
+                      entry.activation?.notificationStatus,
+                      entry.activation?.notificationQueuedAt,
+                      entry.activation?.updatedAt,
+                    );
                   const isCompletedActivation =
                     entry.activation?.activationStatus === "completed";
                   const isSkuLoading = Boolean(
@@ -760,7 +759,8 @@ export function SalesPage({
                                           </span>
                                           <span className="text-sm text-muted-foreground sm:text-right">
                                             {entry.activation
-                                              .licenseKeyMasked ?? "Not included"}
+                                              .licenseKeyMasked ??
+                                              "Not included"}
                                           </span>
                                         </p>
                                         <p>
