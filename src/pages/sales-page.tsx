@@ -69,7 +69,7 @@ function formatRecord(record?: Record<string, string>) {
 function getPurchaseTypeLabel(sku: Sku) {
   return sku.purchaseType === "one_time" ||
     sku.pricingOption.billingCycle === "one_time"
-    ? "One-time"
+    ? "One Time"
     : "Subscription";
 }
 
@@ -565,7 +565,7 @@ export function SalesPage({
                             ) : null}
                           </div>
                         </TableCell>
-                        <TableCell className="align-top flex justify-center">
+                        <TableCell className="align-top text-center">
                           {entry.sale.quantity}
                         </TableCell>
                         <TableCell className="align-top text-sm text-muted-foreground">
