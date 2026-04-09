@@ -34,6 +34,10 @@ function inferPurchaseType(entry: SaleListEntry): PurchaseType {
     return entry.sale.purchaseType;
   }
 
+   if (entry.sku.purchaseType) {
+    return entry.sku.purchaseType;
+  }
+  
   return entry.sku.pricingOption.billingCycle === "one_time"
     ? "one_time"
     : "subscription";
@@ -94,8 +98,12 @@ function maskLicenseKeyPreview(value: string) {
     return "";
   }
 
-  const visibleSuffix = trimmed.slice(-4);
-  const maskedLength = Math.max(trimmed.length - visibleSuffix.length, 4);
+  const revealLength = 4;
+  if (trimmed.length <= revealLength) 
+    return "*".repeat(trimmed.length);
+
+  const visibleSuffix = trimmed.slice(-revealLength);
+  const maskedLength = trimmed.length - revealLength;
   return `${"*".repeat(maskedLength)}${visibleSuffix}`;
 }
 

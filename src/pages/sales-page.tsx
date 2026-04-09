@@ -1,4 +1,4 @@
-import { Fragment, useDeferredValue, useMemo, useState } from "react";
+import { Fragment, useDeferredValue, useEffect, useMemo, useState } from "react";
 import Fuse from "fuse.js";
 import { ShoppingCartIcon } from "lucide-react";
 
@@ -213,6 +213,12 @@ export function SalesPage({
   >({});
   const [skuErrorById, setSkuErrorById] = useState<Record<string, string>>({});
   const deferredQuery = useDeferredValue(query);
+
+  useEffect(() => {
+    setSkuDetailsById({});
+    setSkuLoadStateById({});
+    setSkuErrorById({});
+  }, [sales]);
 
   const search = useMemo(
     () =>
