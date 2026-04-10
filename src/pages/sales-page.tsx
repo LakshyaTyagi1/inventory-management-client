@@ -1,4 +1,10 @@
-import { Fragment, useDeferredValue, useEffect, useMemo, useState } from "react";
+import {
+  Fragment,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import Fuse from "fuse.js";
 import { ShoppingCartIcon } from "lucide-react";
 
@@ -39,7 +45,6 @@ import {
 import { normalizeMoneyAmount } from "@/lib/decimal";
 import type {
   ActivationStatus,
-  NotificationStatus,
   PurchasedBillingCycle,
   PurchaseType,
   SaleType,
@@ -120,24 +125,16 @@ function getActivationStatusLabel(status?: ActivationStatus) {
   return "Failed";
 }
 
-function getNotificationStatusSummary(
-  status?: NotificationStatus,
-  queuedAt?: string,
-  updatedAt?: string,
-) {
-  if (!status || status === "not_queued") {
+function getNotificationStatusSummary(queuedSuccessfully?: boolean) {
+  if (queuedSuccessfully === undefined) {
     return "Not queued";
   }
 
-  if (status === "queued") {
-    return queuedAt
-      ? `Queued at ${formatOptionalTimestamp(queuedAt)}`
-      : "Queued";
+  if (queuedSuccessfully) {
+    return "Queued";
   }
 
-  return updatedAt
-    ? `Failed at ${formatOptionalTimestamp(updatedAt)}`
-    : "Failed";
+  return "Failed";
 }
 
 function getPurchaseTypeSummaryLabel(value?: PurchaseType) {
@@ -285,7 +282,8 @@ export function SalesPage({
     [filteredSales],
   );
   const eventSales = useMemo(
-    () => filteredSales.filter((entry) => entry.sale.saleType === "cancel_sale"),
+    () =>
+      filteredSales.filter((entry) => entry.sale.saleType === "cancel_sale"),
     [filteredSales],
   );
   const totalWorkQueueSales = useMemo(
@@ -478,18 +476,18 @@ export function SalesPage({
                     ? "No sales recorded"
                     : activeView === "events"
                       ? "No sale events matched"
-                    : activeView === "activated"
-                      ? "No activated sales matched"
-                      : "No work-queue sales matched"}
+                      : activeView === "activated"
+                        ? "No activated sales matched"
+                        : "No work-queue sales matched"}
                 </EmptyTitle>
                 <EmptyDescription>
                   {sales.length === 0 && !query.trim()
                     ? "Seed or record a partner sale and it will appear here."
                     : activeView === "events"
                       ? "Try a broader search term or record a cancellation event to see it here."
-                    : activeView === "activated"
-                      ? "Complete an activation or broaden the search to see processed sales here."
-                      : "Try a broader search term or clear the current filter."}
+                      : activeView === "activated"
+                        ? "Complete an activation or broaden the search to see processed sales here."
+                        : "Try a broader search term or clear the current filter."}
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
@@ -526,14 +524,17 @@ export function SalesPage({
                   );
                   const notificationStatusSummary =
                     getNotificationStatusSummary(
-                      entry.activation?.notificationStatus,
-                      entry.activation?.notificationQueuedAt,
-                      entry.activation?.updatedAt,
+                      entry.activation?.notificationQueuedSuccessfully,
+                    );
+                  const partnerNotificationStatusSummary =
+                    getNotificationStatusSummary(
+                      entry.activation?.partnerNotificationQueuedSuccessfully,
                     );
                   const isCompletedActivation =
                     entry.activation?.activationStatus === "completed";
                   const isEventOnlySale = entry.sale.saleType === "cancel_sale";
-                  const canTakeAction = !isEventOnlySale && !isCompletedActivation;
+                  const canTakeAction =
+                    !isEventOnlySale && !isCompletedActivation;
                   const isSkuLoading = Boolean(
                     skuLoadStateById[entry.sale.skuId],
                   );
@@ -738,32 +739,6 @@ export function SalesPage({
                               </div>
                             ) : skuDetails ? (
                               <div className="mx-2 my-3 rounded-xl border bg-background/80 p-4">
-                                <div className="flex justify-between gap-4">
-                                  <p>
-                                    <span className="font-medium capitalize">
-                                      Activation Timeline:
-                                    </span>{" "}
-                                    <span className="text-sm text-muted-foreground sm:text-right">
-                                      {formatActivationTimelineValue(
-                                        skuDetails.activationTimeline,
-                                      ) ?? "Not set"}
-                                    </span>
-                                  </p>
-                                  <p>
-                                    <span className="font-medium capitalize">
-                                      {formatBillingCycleLabel(
-                                        skuDetails.pricingOption.billingCycle,
-                                      )}
-                                      :{" "}
-                                    </span>
-                                    <span className="text-sm text-muted-foreground sm:text-right">
-                                      {formatPriceLine(
-                                        skuDetails.pricingOption,
-                                      )}
-                                    </span>
-                                  </p>
-                                </div>
-
                                 <div className="mt-3 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                                   <div className="rounded-lg border bg-muted/20 p-3">
                                     <p className="text-xs uppercase tracking-wide text-muted-foreground">
@@ -780,137 +755,165 @@ export function SalesPage({
                                       </p>
                                       <p>
                                         <span className="font-medium capitalize">
-                                          Reference:{" "}
+                                          Activation Timeline:{" "}
                                         </span>
                                         <span className="text-sm text-muted-foreground sm:text-right">
-                                          {entry.sale.partner.saleReference}
+                                          {formatActivationTimelineValue(
+                                            skuDetails.activationTimeline,
+                                          ) ?? "Not set"}
                                         </span>
                                       </p>
                                       <p>
                                         <span className="font-medium capitalize">
-                                          Related sale:{" "}
+                                          {formatBillingCycleLabel(
+                                            skuDetails.pricingOption
+                                              .billingCycle,
+                                          )}
+                                          :{" "}
                                         </span>
                                         <span className="text-sm text-muted-foreground sm:text-right">
-                                          {entry.sale.relatedSaleReference ??
-                                            "Not linked"}
+                                          {formatPriceLine(
+                                            skuDetails.pricingOption,
+                                          )}
                                         </span>
                                       </p>
+                                      {entry.sale.relatedSaleReference && (
+                                        <p>
+                                          <span className="font-medium capitalize">
+                                            Related sale:{" "}
+                                          </span>
+                                          <span className="text-sm text-muted-foreground sm:text-right">
+                                            {entry.sale.relatedSaleReference}
+                                          </span>
+                                        </p>
+                                      )}
                                     </div>
                                   </div>
 
                                   {entry.activation ? (
                                     <>
                                       <div className="rounded-lg border bg-muted/20 p-3">
-                                      <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                                        Fulfillment
-                                      </p>
-                                      <div className="mt-2 space-y-1 text-sm">
-                                        <p>
-                                          <span className="font-medium capitalize">
-                                            Method:{" "}
-                                          </span>
-                                          <span className="text-sm text-muted-foreground sm:text-right">
-                                            {getFulfillmentModeLabel(
-                                              entry.activation.fulfillmentMode,
-                                            )}
-                                          </span>
+                                        <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                                          Fulfillment
                                         </p>
-                                        <p>
-                                          <span className="font-medium capitalize">
-                                            Purchase type:{" "}
-                                          </span>
-                                          <span className="text-sm text-muted-foreground sm:text-right">
-                                            {getPurchaseTypeSummaryLabel(
-                                              entry.activation.purchaseType,
-                                            )}
-                                          </span>
-                                        </p>
-                                        <p>
-                                          <span className="font-medium capitalize">
-                                            Billing cycle:{" "}
-                                          </span>
-                                          <span className="text-sm text-muted-foreground sm:text-right">
-                                            {getPurchasedBillingCycleLabel(
-                                              entry.activation
-                                                .billingCyclePurchased,
-                                            )}
-                                          </span>
-                                        </p>
+                                        <div className="mt-2 space-y-1 text-sm">
+                                          <p>
+                                            <span className="font-medium capitalize">
+                                              Method:{" "}
+                                            </span>
+                                            <span className="text-sm text-muted-foreground sm:text-right">
+                                              {getFulfillmentModeLabel(
+                                                entry.activation
+                                                  .fulfillmentMode,
+                                              )}
+                                            </span>
+                                          </p>
+                                          <p>
+                                            <span className="font-medium capitalize">
+                                              Purchase type:{" "}
+                                            </span>
+                                            <span className="text-sm text-muted-foreground sm:text-right">
+                                              {getPurchaseTypeSummaryLabel(
+                                                entry.activation.purchaseType,
+                                              )}
+                                            </span>
+                                          </p>
+                                          <p>
+                                            <span className="font-medium capitalize">
+                                              Billing cycle:{" "}
+                                            </span>
+                                            <span className="text-sm text-muted-foreground sm:text-right">
+                                              {getPurchasedBillingCycleLabel(
+                                                entry.activation
+                                                  .billingCyclePurchased,
+                                              )}
+                                            </span>
+                                          </p>
+                                        </div>
                                       </div>
-                                    </div>
 
                                       <div className="rounded-lg border bg-muted/20 p-3">
-                                      <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                                        Access window
-                                      </p>
-                                      <div className="mt-2 space-y-1 text-sm">
-                                        <p>
-                                          <span className="font-medium capitalize">
-                                            Start:{" "}
-                                          </span>
-                                          <span className="text-sm text-muted-foreground sm:text-right">
-                                            {formatOptionalDate(
-                                              entry.activation.accessStartDate,
-                                            )}
-                                          </span>
+                                        <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                                          Access window
                                         </p>
-                                        <p>
-                                          <span className="font-medium capitalize">
-                                            End:{" "}
-                                          </span>
-                                          <span className="text-sm text-muted-foreground sm:text-right">
-                                            {formatOptionalDate(
-                                              entry.activation.accessEndDate,
-                                            )}
-                                          </span>
-                                        </p>
-                                        <p>
-                                          <span className="font-medium capitalize">
-                                            Renewal:{" "}
-                                          </span>
-                                          <span className="text-sm text-muted-foreground sm:text-right">
-                                            {formatOptionalDate(
-                                              entry.activation.nextRenewalDate,
-                                            )}
-                                          </span>
-                                        </p>
+                                        <div className="mt-2 space-y-1 text-sm">
+                                          <p>
+                                            <span className="font-medium capitalize">
+                                              Start:{" "}
+                                            </span>
+                                            <span className="text-sm text-muted-foreground sm:text-right">
+                                              {formatOptionalDate(
+                                                entry.activation
+                                                  .accessStartDate,
+                                              )}
+                                            </span>
+                                          </p>
+                                          <p>
+                                            <span className="font-medium capitalize">
+                                              End:{" "}
+                                            </span>
+                                            <span className="text-sm text-muted-foreground sm:text-right">
+                                              {formatOptionalDate(
+                                                entry.activation.accessEndDate,
+                                              )}
+                                            </span>
+                                          </p>
+                                          <p>
+                                            <span className="font-medium capitalize">
+                                              Renewal:{" "}
+                                            </span>
+                                            <span className="text-sm text-muted-foreground sm:text-right">
+                                              {formatOptionalDate(
+                                                entry.activation
+                                                  .nextRenewalDate,
+                                              )}
+                                            </span>
+                                          </p>
+                                        </div>
                                       </div>
-                                    </div>
 
                                       <div className="rounded-lg border bg-muted/20 p-3">
-                                      <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                                        Delivery
-                                      </p>
-                                      <div className="mt-2 space-y-1 text-sm">
-                                        <p>
-                                          <span className="font-medium capitalize">
-                                            License key:{" "}
-                                          </span>
-                                          <span className="text-sm text-muted-foreground sm:text-right">
-                                            {entry.activation
-                                              .licenseKeyMasked ??
-                                              "Not included"}
-                                          </span>
+                                        <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                                          Delivery
                                         </p>
-                                        <p>
-                                          <span className="font-medium capitalize">
-                                            License document:{" "}
-                                          </span>
-                                          <span className="text-sm text-muted-foreground sm:text-right">
-                                            {entry.activation.licenseDocument
-                                              ?.fileName ?? "Not included"}
-                                          </span>
-                                        </p>
-                                        <p>
-                                          <span className="font-medium capitalize">
-                                            Mail status:{" "}
-                                          </span>
-                                          <span className="text-sm text-muted-foreground sm:text-right">
-                                            {notificationStatusSummary}
-                                          </span>
-                                        </p>
+                                        <div className="mt-2 space-y-1 text-sm">
+                                          <p>
+                                            <span className="font-medium capitalize">
+                                              License key:{" "}
+                                            </span>
+                                            <span className="text-sm text-muted-foreground sm:text-right">
+                                              {entry.activation
+                                                .licenseKeyMasked ??
+                                                "Not included"}
+                                            </span>
+                                          </p>
+                                          <p>
+                                            <span className="font-medium capitalize">
+                                              License document:{" "}
+                                            </span>
+                                            <span className="text-sm text-muted-foreground sm:text-right">
+                                              {entry.activation.licenseDocument
+                                                ?.fileName ?? "Not included"}
+                                            </span>
+                                          </p>
+                                          <p>
+                                            <span className="font-medium capitalize">
+                                              Mail status:{" "}
+                                            </span>
+                                            <span className="text-sm text-muted-foreground sm:text-right">
+                                              {notificationStatusSummary}
+                                            </span>
+                                          </p>
+                                          <p>
+                                            <span className="font-medium capitalize">
+                                              Partner webhook:{" "}
+                                            </span>
+                                            <span className="text-sm text-muted-foreground sm:text-right">
+                                              {partnerNotificationStatusSummary}
+                                            </span>
+                                          </p>
+                                        </div>
                                       </div>
-                                    </div>
 
                                       {entry.activation.notes ? (
                                         <div className="rounded-lg border bg-muted/20 p-3 md:col-span-1 lg:col-span-3">

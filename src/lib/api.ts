@@ -333,7 +333,6 @@ export const api = {
         contentBase64?: string;
       };
       activationStatus?: "pending" | "processing" | "completed" | "failed";
-      notificationStatus?: "not_queued" | "queued" | "failed";
       notes?: string;
     },
   ) =>

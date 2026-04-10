@@ -329,7 +329,6 @@ describe("sales page", () => {
         uploadedAt: "2026-04-01T00:00:00.000Z",
       },
       activationStatus: "completed",
-      notificationStatus: "not_queued",
       activatedAt: "2026-04-01T00:00:00.000Z",
       activatedBy: "ops@example.com",
       notes: "Customer credentials shared with procurement.",
@@ -414,7 +413,6 @@ describe("sales page", () => {
           uploadedAt: undefined,
         },
         activationStatus: "completed",
-        notificationStatus: "not_queued",
         notes: "Customer credentials shared with procurement.",
       });
     });
@@ -723,10 +721,10 @@ describe("sales page", () => {
             uploadedAt: "2026-04-01T00:00:00.000Z",
           },
           activationStatus: "completed",
-          notificationStatus: "queued",
+          notificationQueuedSuccessfully: true,
+          partnerNotificationQueuedSuccessfully: true,
           activatedAt: "2026-04-01T09:30:00.000Z",
           activatedBy: "ops@example.com",
-          notificationQueuedAt: "2026-04-01T09:31:00.000Z",
           notes: "Customer credentials shared with procurement.",
           createdAt: "2026-04-01T09:30:00.000Z",
           updatedAt: "2026-04-01T09:31:00.000Z",
@@ -771,7 +769,10 @@ describe("sales page", () => {
       screen.getByText(byNormalizedText("License document: zoom-license.pdf")),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(byNormalizedTextPrefix("Mail status: Queued at")),
+      screen.getByText(byNormalizedText("Mail status: Queued")),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(byNormalizedText("Partner webhook: Queued")),
     ).toBeInTheDocument();
     expect(
       screen.getByText(/customer credentials shared with procurement\./i),
@@ -881,10 +882,10 @@ describe("sales page", () => {
             uploadedAt: "2026-04-01T00:00:00.000Z",
           },
           activationStatus: "completed",
-          notificationStatus: "queued",
+          notificationQueuedSuccessfully: true,
+          partnerNotificationQueuedSuccessfully: undefined,
           activatedAt: "2026-04-01T09:30:00.000Z",
           activatedBy: "ops@example.com",
-          notificationQueuedAt: "2026-04-01T09:31:00.000Z",
           notes: "Welcome email queued successfully.",
           createdAt: "2026-04-01T09:30:00.000Z",
           updatedAt: "2026-04-01T09:31:00.000Z",
@@ -920,7 +921,10 @@ describe("sales page", () => {
       screen.getByText(byNormalizedText("License document: notion-license.pdf")),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(byNormalizedTextPrefix("Mail status: Queued at")),
+      screen.getByText(byNormalizedText("Mail status: Queued")),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(byNormalizedText("Partner webhook: Not queued")),
     ).toBeInTheDocument();
   });
 
@@ -1012,8 +1016,8 @@ describe("sales page", () => {
           accessEndDate: "2026-05-01T00:00:00.000Z",
           nextRenewalDate: "2026-05-01T00:00:00.000Z",
           activationStatus: "completed",
-          notificationStatus: "failed",
-          notificationError: "notification enqueue unavailable",
+          notificationQueuedSuccessfully: false,
+          partnerNotificationQueuedSuccessfully: false,
           activatedAt: "2026-04-01T09:30:00.000Z",
           activatedBy: "ops@example.com",
           notes: "Mail delivery failed during queueing.",
@@ -1045,7 +1049,10 @@ describe("sales page", () => {
       await screen.findByText(byNormalizedText("Method: Email based")),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(byNormalizedTextPrefix("Mail status: Failed at")),
+      screen.getByText(byNormalizedText("Mail status: Failed")),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(byNormalizedText("Partner webhook: Failed")),
     ).toBeInTheDocument();
   });
 

@@ -118,7 +118,6 @@ type SaleActivationSavePayload = {
   licenseDocumentFile?: File;
   licenseDocument?: LicenseDocumentMetadata;
   activationStatus?: "pending" | "processing" | "completed" | "failed";
-  notificationStatus?: "not_queued" | "queued" | "failed";
   notes?: string;
 };
 
@@ -229,7 +228,6 @@ export function SaleActivationDialog({
       licenseDocumentFile: licenseDocumentFile ?? undefined,
       licenseDocument: licenseDocument ?? undefined,
       activationStatus: "completed",
-      notificationStatus: "not_queued",
       notes: notes.trim() || undefined,
     });
 

@@ -518,7 +518,6 @@ describe("api sku response normalization", () => {
         accessEndDate: "2026-05-01T00:00:00.000Z",
         nextRenewalDate: "2026-05-01T00:00:00.000Z",
         activationStatus: "completed",
-        notificationStatus: "not_queued",
         activatedAt: "2026-04-01T00:00:00.000Z",
         activatedBy: "ops@example.com",
         createdAt: "2026-04-01T00:00:00.000Z",
@@ -538,7 +537,6 @@ describe("api sku response normalization", () => {
       accessEndDate: "2026-05-01",
       nextRenewalDate: "2026-05-01",
       activationStatus: "completed",
-      notificationStatus: "not_queued",
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -556,7 +554,6 @@ describe("api sku response normalization", () => {
           accessEndDate: "2026-05-01",
           nextRenewalDate: "2026-05-01",
           activationStatus: "completed",
-          notificationStatus: "not_queued",
         }),
       },
     );

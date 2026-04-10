@@ -14,7 +14,6 @@ export type PurchaseType = "subscription" | "one_time" | "unknown";
 export type SaleType = "new_sale" | "renewal_sale" | "cancel_sale";
 export type SaleFulfillmentMode = "license_key" | "email_based";
 export type ActivationStatus = "pending" | "processing" | "completed" | "failed";
-export type NotificationStatus = "not_queued" | "queued" | "failed";
 
 export type Product = {
   _id: string;
@@ -135,13 +134,10 @@ export type SaleActivation = {
   licenseKeyMasked?: string;
   licenseDocument?: LicenseDocumentMetadata;
   activationStatus: ActivationStatus;
-  notificationStatus: NotificationStatus;
   activatedAt: string;
   activatedBy: string;
-  notificationQueuedAt?: string;
-  notificationError?: string;
-  notificationJobId?: string;
-  notificationIdempotencyKey?: string;
+  notificationQueuedSuccessfully?: boolean;
+  partnerNotificationQueuedSuccessfully?: boolean;
   notes?: string;
   createdAt: string;
   updatedAt: string;

@@ -200,5 +200,14 @@ export function formatActivationTimelineValue(value?: string) {
 
   if (!normalizedValue) return undefined;
 
-  return normalizedValue;
+  if (/\bday(s)?\b/i.test(normalizedValue)) {
+    return normalizedValue;
+  }
+
+  const numericValue = Number(normalizedValue);
+  const suffix = Number.isFinite(numericValue) && numericValue === 1
+    ? "day"
+    : "days";
+
+  return `${normalizedValue} ${suffix}`;
 }
