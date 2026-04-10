@@ -365,7 +365,7 @@ export function OperationsApp() {
           </div>
         </header>
 
-        <main className="flex flex-1 flex-col gap-6 px-4 py-6 md:px-6">
+        <main className="flex min-w-0 flex-1 flex-col gap-6 px-4 py-6 md:px-6">
           <Routes>
             <Route
               path="/"

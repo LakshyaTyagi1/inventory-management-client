@@ -550,7 +550,7 @@ export function SalesPage({
                         </TableCell>
                         <TableCell className="align-top">
                           <div className="flex min-w-52 flex-col gap-1.5">
-                            <span className="font-medium">
+                            <span className="font-medium capitalize">
                               {entry.plan.name}
                             </span>
                             <div className="flex flex-wrap gap-2">
@@ -598,11 +598,6 @@ export function SalesPage({
                             <span className="text-sm text-muted-foreground">
                               Ref: {entry.sale.partner.saleReference}
                             </span>
-                            {entry.sale.relatedSaleReference ? (
-                              <span className="text-sm text-muted-foreground">
-                                Related: {entry.sale.relatedSaleReference}
-                              </span>
-                            ) : null}
                           </div>
                         </TableCell>
                         <TableCell className="align-top">
