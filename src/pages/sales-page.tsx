@@ -4,6 +4,8 @@ import {
   useEffect,
   useMemo,
   useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
 } from "react";
 import Fuse from "fuse.js";
 import { ShoppingCartIcon } from "lucide-react";
@@ -213,9 +215,7 @@ export function SalesPage({
   const [activeView, setActiveView] = useState<
     "work_queue" | "activated" | "events"
   >("work_queue");
-  const [expandedSales, setExpandedSales] = useState<Record<string, boolean>>(
-    {},
-  );
+  const [expandedSaleId, setExpandedSaleId] = useState<string | null>(null);
   const [activationDialogSaleId, setActivationDialogSaleId] = useState<
     string | null
   >(null);
@@ -228,6 +228,7 @@ export function SalesPage({
   const deferredQuery = useDeferredValue(query);
 
   useEffect(() => {
+    setExpandedSaleId(null);
     setSkuDetailsById({});
     setSkuLoadStateById({});
     setSkuErrorById({});
@@ -357,21 +358,50 @@ export function SalesPage({
   };
 
   const toggleExpandedSale = (saleId: string, skuId: string) => {
-    const isExpanded = Boolean(expandedSales[saleId]);
+    const isExpanded = expandedSaleId === saleId;
 
-    setExpandedSales((current) => {
-      if (isExpanded) {
-        const next = { ...current };
-        delete next[saleId];
-        return next;
-      }
-
-      return { ...current, [saleId]: true };
-    });
+    setExpandedSaleId(isExpanded ? null : saleId);
 
     if (!isExpanded) {
       void loadSkuDetails(skuId);
     }
+  };
+
+  const shouldIgnoreRowToggle = (target: EventTarget | null) =>
+    target instanceof HTMLElement &&
+    Boolean(
+      target.closest(
+        "button, a, input, select, textarea, summary, [role='button'], [role='link']",
+      ),
+    );
+
+  const handleSaleRowClick = (
+    event: ReactMouseEvent<HTMLTableRowElement>,
+    saleId: string,
+    skuId: string,
+  ) => {
+    if (shouldIgnoreRowToggle(event.target)) {
+      return;
+    }
+
+    toggleExpandedSale(saleId, skuId);
+  };
+
+  const handleSaleRowKeyDown = (
+    event: ReactKeyboardEvent<HTMLTableRowElement>,
+    saleId: string,
+    skuId: string,
+  ) => {
+    if (shouldIgnoreRowToggle(event.target)) {
+      return;
+    }
+
+    if (event.key !== "Enter" && event.key !== " ") {
+      return;
+    }
+
+    event.preventDefault();
+    toggleExpandedSale(saleId, skuId);
   };
 
   const saveSaleActivation = async (
@@ -501,8 +531,7 @@ export function SalesPage({
                   <TableHead>Customer</TableHead>
                   <TableHead>Payment</TableHead>
                   <TableHead>Qty</TableHead>
-                  <TableHead>Sold at</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -513,7 +542,7 @@ export function SalesPage({
                   const paymentMetadata = formatRecord(
                     entry.sale.payment.metadata,
                   );
-                  const isExpanded = Boolean(expandedSales[entry.sale._id]);
+                  const isExpanded = expandedSaleId === entry.sale._id;
                   const skuDetails = skuDetailsById[entry.sale.skuId];
                   const purchaseTypeLabel = skuDetails
                     ? getPurchaseTypeLabel(skuDetails)
@@ -543,7 +572,25 @@ export function SalesPage({
                   return (
                     <Fragment key={entry.sale._id}>
                       <TableRow
-                        data-state={isExpanded ? "expanded" : undefined}
+                        data-state={isExpanded ? "selected" : undefined}
+                        tabIndex={0}
+                        aria-expanded={isExpanded}
+                        aria-controls={`sale-details-${entry.sale._id}`}
+                        className="cursor-pointer focus-visible:bg-muted/50 focus-visible:outline-none"
+                        onClick={(event) =>
+                          handleSaleRowClick(
+                            event,
+                            entry.sale._id,
+                            entry.sale.skuId,
+                          )
+                        }
+                        onKeyDown={(event) =>
+                          handleSaleRowKeyDown(
+                            event,
+                            entry.sale._id,
+                            entry.sale.skuId,
+                          )
+                        }
                       >
                         <TableCell className="align-top font-medium min-w-32">
                           {entry.product.name}
@@ -640,6 +687,9 @@ export function SalesPage({
                               {entry.sale.payment.provider} /{" "}
                               {entry.sale.payment.transactionId}
                             </span>
+                            <span className="text-sm text-muted-foreground">
+                              <span className="text-primary font-medium">Sold At: </span>{new Date(entry.sale.createdAt).toLocaleString()}
+                            </span>
                             {paymentMetadata.length > 0 ? (
                               <div className="text-xs text-muted-foreground">
                                 {paymentMetadata.map(([key, value]) => (
@@ -652,45 +702,21 @@ export function SalesPage({
                             ) : null}
                           </div>
                         </TableCell>
-                        <TableCell className="align-top text-center">
+                        <TableCell className="align-top">
                           {entry.sale.quantity}
                         </TableCell>
-                        <TableCell className="align-top text-sm text-muted-foreground">
-                          {new Date(entry.sale.createdAt).toLocaleString()}
-                        </TableCell>
                         <TableCell className="align-top">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            aria-expanded={isExpanded}
-                            aria-controls={`sale-details-${entry.sale._id}`}
-                            className="mb-1 w-full"
-                            aria-label={`${isExpanded ? "Hide" : "Show"} SKU details for ${entry.product.name}`}
-                            onClick={() =>
-                              toggleExpandedSale(
-                                entry.sale._id,
-                                entry.sale.skuId,
-                              )
-                            }
-                          >
-                            {isExpanded ? "Hide details" : "Show details"}
-                          </Button>
-                          <br />
                           {canTakeAction ? (
                             <Button
                               type="button"
                               variant="default"
-                              className="mt-1 w-full"
+                              className="w-full"
                               onClick={() =>
                                 setActivationDialogSaleId(entry.sale._id)
                               }
                             >
                               Action
                             </Button>
-                          ) : isEventOnlySale ? (
-                            <p className="mt-2 text-xs text-muted-foreground">
-                              No fulfillment action
-                            </p>
                           ) : null}
                         </TableCell>
                       </TableRow>
